@@ -387,7 +387,7 @@ class WidgetWindow(ui.Window):
         components = ["Position", "Rotation"]
         all_axis = ["X", "Y", "Z"]
         colors = {"X": 0xFF5555AA, "Y": 0xFF76A371, "Z": 0xFFA07D4F}
-        default_values = [0.0, 0.0, 0.1]
+        default_values = [0.0, 0.0, 1.0]
 
         with ui.CollapsableFrame("Position and Orientation"):
             with ui.VStack(spacing=8):

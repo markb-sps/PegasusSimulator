@@ -791,7 +791,6 @@ class MavlinkBackend(Backend):
             return
 
         self._sensor_data.new_sim_state = False
-
         try:
             self._connection.mav.hil_state_quaternion_send(
                 time_usec,

@@ -35,14 +35,15 @@ class PX4LaunchTool:
         # Configurations to whether autostart px4 (SITL) automatically or have the user launch it manually on another
         # terminal
         self.px4_dir = px4_dir
-        self.rc_script = self.px4_dir + "/ROMFS/px4fmu_common/init.d-posix/rcS"
+        self.rc_script = self.px4_dir + "/ROMFS/px4fmu_common/init.d-posix/rcS_isaac"
 
         # Create a temporary filesystem for px4 to write data to/from (and modify the origin rcS files)
         self.root_fs = tempfile.TemporaryDirectory()
 
         # Set the environement variables that let PX4 know which vehicle model to use internally
         self.environment = os.environ
-        self.environment["PX4_SIM_MODEL"] = px4_model
+        # self.environment["PX4_SIM_MODEL"] = px4_model
+        self.environment["PX4_SIM_MODEL"] = "standard_vtol"
 
     def launch_px4(self):
         """
