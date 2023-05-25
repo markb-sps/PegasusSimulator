@@ -5,7 +5,7 @@
 
 # Sensors that can be used with the vehicles
 from pegasus.simulator.parser import Parser
-from pegasus.simulator.logic.backends import MavlinkBackendConfig, MavlinkBackend, ROS2Backend
+from pegasus.simulator.logic.backends import MavlinkBackendConfig, MavlinkBackend, MavlinkBackendVTOL, MavlinkBackendVTOLConfig, ROS2Backend
 
 
 class BackendsParser(Parser):
@@ -14,7 +14,7 @@ class BackendsParser(Parser):
     def __init__(self):
 
         # Dictionary of available sensors to instantiate
-        self.backends = {"mavlink": MavlinkBackendConfig, "ros2": ROS2Backend}
+        self.backends = {"mavlink_vtol": MavlinkBackendConfig, "mavlink": MavlinkBackendConfig, "ros2": ROS2Backend}
 
     def parse(self, data_type: str, data_dict):
 

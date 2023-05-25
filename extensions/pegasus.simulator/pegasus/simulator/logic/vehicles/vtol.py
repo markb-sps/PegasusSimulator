@@ -1,6 +1,6 @@
 """
 | File: vtol.py
-| Author: Mohammadreza Mousae (mmousaei@andrew.cmu.edu)
+| Author: Mohammadreza Mousaei (mmousaei@andrew.cmu.edu)
 | License: BSD-3-Clause. Copyright (c) 2023. All rights reserved.
 | Description: Definition of the VTOL class which is used as the base for standard vehicles.
 """
@@ -11,11 +11,12 @@ import numpy as np
 from pegasus.simulator.logic.vehicles.vehicle import Vehicle
 
 # Mavlink interface
-from pegasus.simulator.logic.backends.mavlink_backend import MavlinkBackend
+from pegasus.simulator.logic.backends.mavlink_backend_vtol import MavlinkBackendVTOL
 
 # Sensors and dynamics setup
 from pegasus.simulator.logic.dynamics import LinearDrag
-from pegasus.simulator.logic.thrusters import QuadraticThrustCurve
+from pegasus.simulator.logic.dynamics import Lift
+from pegasus.simulator.logic.thrusters import VtolActuations
 from pegasus.simulator.logic.sensors import Barometer, IMU, Magnetometer, GPS
 from pegasus.simulator.logic.interface.pegasus_interface import PegasusInterface
 
@@ -36,9 +37,10 @@ class VTOLConfig:
         self.usd_file = ""
 
         # The default thrust curve for a quadrotor and dynamics relating to drag
-        self.thrust_curve = QuadraticThrustCurve()
+        self.actuations = VtolActuations()
 
         self.drag = LinearDrag([0.50, 0.30, 0.0])
+        self.lift = Lift(1.5)
 
         # The default sensors for a quadrotor
         self.sensors = [Barometer(), IMU(), Magnetometer(), GPS()]
@@ -46,7 +48,7 @@ class VTOLConfig:
         # The backends for actually sending commands to the vehicle. By default use mavlink (with default mavlink configurations)
         # [Can be None as well, if we do not desired to use PX4 with this simulated vehicle]. It can also be a ROS2 backend
         # or your own custom Backend implementation!
-        self.backends = [MavlinkBackend()]
+        self.backends = [MavlinkBackendVTOL()]
 
 
 class VTOL(Vehicle):
@@ -55,7 +57,7 @@ class VTOL(Vehicle):
     def __init__(
         self,
         # Simulation specific configurations
-        stage_prefix: str = "quadrotor",
+        stage_prefix: str = "vtol",
         usd_file: str = "",
         vehicle_id: int = 0,
         # Spawning pose of the vehicle
@@ -71,7 +73,7 @@ class VTOL(Vehicle):
             vehicle_id (int): The id to be used for the vehicle. Defaults to 0.
             init_pos (list): The initial position of the vehicle in the inertial frame (in ENU convention). Defaults to [0.0, 0.0, 0.07].
             init_orientation (list): The initial orientation of the vehicle in quaternion [qx, qy, qz, qw]. Defaults to [0.0, 0.0, 0.0, 1.0].
-            config (_type_, optional): _description_. Defaults to MultirotorConfig().
+            config (_type_, optional): _description_. Defaults to VTOLConfig().
         """
 
         # 1. Initiate the Vehicle object itself
@@ -88,8 +90,9 @@ class VTOL(Vehicle):
 
         # 3. Setup the dynamics of the system
         # Get the thrust curve of the vehicle from the configuration
-        self._thrusters = config.thrust_curve
+        self._thrusters = config.actuations
         self._drag = config.drag
+        self._lift = config.lift
 
         # 4. Save the backend interface (if given in the configuration of the multirotor)
         # and initialize them
@@ -156,38 +159,44 @@ class VTOL(Vehicle):
 
         # Get the articulation root of the vehicle
         articulation = self._world.dc_interface.get_articulation(self._stage_prefix)
-
         # Get the desired angular velocities for each rotor from the first backend (can be mavlink or other) expressed in rad/s
         if len(self._backends) != 0:
             desired_rotor_velocities = self._backends[0].input_reference()
         else:
             desired_rotor_velocities = [0.0 for i in range(self._thrusters._num_rotors)]
 
-        # print("desired_rotor_vel = ", desired_rotor_velocities)
+        # print("desired_rotor_vel = ", len(desired_rotor_velocities))
         # Input the desired rotor velocities in the thruster model
         self._thrusters.set_input_reference(desired_rotor_velocities)
 
         # Get the desired forces to apply to the vehicle
         
-        forces_z, _, yaw_moment = self._thrusters.update(self._state, dt)
-        # print("force z = ", forces_z)
+        forces, _, roll_moment, pitch_moment, yaw_moment = self._thrusters.update(self._state, dt)
+        # print("force z = ", forces)
         # print("yaw_moment = ", yaw_moment)
 
         # Apply force to each rotor
         for i in range(4):
 
             # Apply the force in Z on the rotor frame
-            self.apply_force([0.0, 0.0, forces_z[i]], body_part="/rotor" + str(i))
+            self.apply_force([0.0, 0.0, forces[i]], body_part="/rotor" + str(i))
 
             # Generate the rotating propeller visual effect
-            self.handle_propeller_visual(i, forces_z[i], articulation)
+            self.handle_propeller_visual(i, forces[i], articulation)
 
+        
+        self.apply_force([forces[4], 0.0, 0.0], body_part="/body")
+        self.handle_propeller_visual(4, forces[4], articulation)
         # Apply the torque to the body frame of the vehicle that corresponds to the rolling moment
-        self.apply_torque([0.0, 0.0, yaw_moment], "/body")
+        self.apply_torque([roll_moment, pitch_moment, yaw_moment], "/body")
+        # self.apply_torque([0.0, 0.0, yaw_moment], "/body")
 
         # Compute the total linear drag force to apply to the vehicle's body frame
         drag = self._drag.update(self._state, dt)
+        lift = self._lift.update(self._state, dt)
+
         self.apply_force(drag, body_part="/body")
+        self.apply_force(lift, body_part="/body")
 
         # Call the update methods in all backends
         for backend in self._backends:

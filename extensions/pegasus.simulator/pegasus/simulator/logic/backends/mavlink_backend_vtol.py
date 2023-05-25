@@ -1,10 +1,10 @@
 """
-| File: mavlink_backend.py
-| Author: Marcelo Jacinto (marcelo.jacinto@tecnico.ulisboa.pt)
+| File: mavlink_backend_vtol.py
+| Author: Mohammadreza Mousaei 
 | Description: File that implements the Mavlink Backend for communication/control with/of the vehicle simulation
 | License: BSD-3-Clause. Copyright (c) 2023, Marcelo Jacinto. All rights reserved.
 """
-__all__ = ["MavlinkBackend", "MavlinkBackendConfig"]
+__all__ = ["MavlinkBackendVTOL", "MavlinkBackendVTOLConfig"]
 
 import carb
 import time
@@ -115,10 +115,11 @@ class ThrusterControl:
 
     def __init__(
         self,
-        num_rotors: int = 4,
-        input_offset=[0, 0, 0, 0],
-        input_scaling=[0, 0, 0, 0],
-        zero_position_armed=[100, 100, 100, 100],
+        num_rotors: int = 5,
+        num_surfaces: int = 4,
+        input_offset=[0, 0, 0, 0, 0, 0, 0, 0, 0],
+        input_scaling=[0, 0, 0, 0, 0, 0, 0, 0, 0],
+        zero_position_armed=[100, 100, 100, 100, 100, 100, 100, 100, 100],
     ):
         """Initialize the ThrusterControl object
 
@@ -130,24 +131,25 @@ class ThrusterControl:
         """
 
         self.num_rotors: int = num_rotors
+        self.num_surfaces: int = num_surfaces
 
         # Values to scale and offset the rotor control inputs received from PX4
-        assert len(input_offset) == self.num_rotors
+        assert len(input_offset) == (self.num_surfaces + self.num_rotors)
         self.input_offset = input_offset
 
-        assert len(input_scaling) == self.num_rotors
+        assert len(input_scaling) == (self.num_surfaces + self.num_rotors)
         self.input_scaling = input_scaling
 
-        assert len(zero_position_armed) == self.num_rotors
+        assert len(zero_position_armed) == (self.num_surfaces + self.num_rotors)
         self.zero_position_armed = zero_position_armed
 
         # The actual speed references to apply to the vehicle rotor joints
-        self._input_reference = [0.0 for i in range(self.num_rotors)]
-        print("here4")
+        self._input_reference = [0.0 for i in range(self.num_rotors + self.num_surfaces)]
+        print(self._input_reference)
 
     @property
     def input_reference(self):
-        """A list of floats with the angular velocities in rad/s
+        """A list of floats with the actuations: (5 angular velocities of rotors in rad/s and 4 servo positions of surfaces in 
 
         Returns:
             list: A list of floats with the angular velocities to apply to each rotor, expressed in rad/s
@@ -161,14 +163,13 @@ class ThrusterControl:
         Args:
             controls (list): A list of ints with thrust controls received via mavlink
         """
-        
         # Check if the number of controls received is correct
         if len(controls) < self.num_rotors:
             carb.log_warn("Did not receive enough inputs for all the rotors")
             return
 
         # Update the desired reference for every rotor (and saturate according to the min and max values)
-        for i in range(self.num_rotors):
+        for i in range(self.num_rotors + self.num_surfaces):
 
             # Compute the actual velocity reference to apply to each rotor
             self._input_reference[i] = (controls[i] + self.input_offset[i]) * self.input_scaling[
@@ -179,17 +180,17 @@ class ThrusterControl:
         """
         When this method is called, the input_reference is updated such that every rotor is stopped
         """
-        self._input_reference = [0.0 for i in range(self.num_rotors)]
+        self._input_reference = [0.0 for i in range(self.num_rotors + self.num_surfaces)]
 
 
-class MavlinkBackendConfig:
+class MavlinkBackendVTOLConfig:
     """
     An auxiliary data class used to store all the configurations for the mavlink communications.
     """
 
     def __init__(self, config={}):
         """
-        Initialize the MavlinkBackendConfig class
+        Initialize the MavlinkBackendVTOLConfig class
 
         Args:
             config (dict): A Dictionary that contains all the parameters for configuring the Mavlink interface - it can be empty or only have some of the parameters used by this backend.
@@ -206,9 +207,9 @@ class MavlinkBackendConfig:
             >>>  "px4_vehicle_model": "iris",
             >>>  "enable_lockstep": True,
             >>>  "num_rotors": 4,
-            >>>  "input_offset": [0.0, 0.0, 0.0, 0.0],
-            >>>  "input_scaling": [1000.0, 1000.0, 1000.0, 1000.0],
-            >>>  "zero_position_armed": [100.0, 100.0, 100.0, 100.0],
+            >>>  "input_offset": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            >>>  "input_scaling": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            >>>  "zero_position_armed": =[100, 100, 100, 100, 100, 100, 100, 100, 100],
             >>>  "update_rate": 250.0
             >>> }
         """
@@ -226,26 +227,27 @@ class MavlinkBackendConfig:
 
         # Configurations to interpret the rotors control messages coming from mavlink
         self.enable_lockstep: bool = config.get("enable_lockstep", True)
-        self.num_rotors: int = config.get("num_rotors", 4)
-        self.input_offset = config.get("input_offset", [0.0, 0.0, 0.0, 0.0])
-        self.input_scaling = config.get("input_scaling", [1000.0, 1000.0, 1000.0, 1000.0])
-        self.zero_position_armed = config.get("zero_position_armed", [100.0, 100.0, 100.0, 100.0])
+        self.num_rotors: int = config.get("num_rotors", 5)
+        self.num_surfaces: int = config.get("num_surfaces", 4)
+        self.input_offset = config.get("input_offset", [0, 0, 0, 0, 0, 0, 0, 0, 0])
+        self.input_scaling = config.get("input_scaling", [1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0])
+        self.zero_position_armed = config.get("zero_position_armed", [100, 100, 100, 100, 100, 100, 100, 100, 100])
 
         # The update rate at which we will be sending data to mavlink (TODO - remove this from here in the future
         # and infer directly from the function calls)
         self.update_rate: float = config.get("update_rate", 250.0)  # [Hz]
 
 
-class MavlinkBackend(Backend):
+class MavlinkBackendVTOL(Backend):
     """ The Mavlink Backend used to receive the vehicle's state and sensor data in order to send to PX4 through mavlink. It also
     receives via mavlink the thruster commands to apply to each vehicle rotor.
     """
 
-    def __init__(self, config=MavlinkBackendConfig()):
-        """Initialize the MavlinkBackend
+    def __init__(self, config=MavlinkBackendVTOLConfig()):
+        """Initialize the MavlinkBackendVTOL
 
         Args:
-            config (MavlinkBackendConfig): The configuration class for the MavlinkBackend. Defaults to MavlinkBackendConfig().
+            config (MavlinkBackendVTOLConfig): The configuration class for the MavlinkBackendVTOL. Defaults to MavlinkBackendVTOLConfig().
         """
 
         # Initialize the Backend object
@@ -280,7 +282,7 @@ class MavlinkBackend(Backend):
 
         # Vehicle Rotor data received from mavlink
         self._rotor_data: ThrusterControl = ThrusterControl(
-            config.num_rotors, config.input_offset, config.input_scaling, config.zero_position_armed
+            config.num_rotors, config.num_surfaces, config.input_offset, config.input_scaling, config.zero_position_armed
         )
 
         # Vehicle actuator control data
@@ -479,7 +481,7 @@ class MavlinkBackend(Backend):
         return self._rotor_data.input_reference
 
     def __del__(self):
-        """Gets called when the MavlinkBackend object gets destroyed. When this happens, we make sure
+        """Gets called when the MavlinkBackendVTOL object gets destroyed. When this happens, we make sure
         to close any mavlink connection open for this vehicle.
         """
 
@@ -703,7 +705,7 @@ class MavlinkBackend(Backend):
 
         try:
             # print("abs press = ", self._sensor_data.abs_pressure)
-            self._sensor_data.diff_pressure = self._sensor_data.sim_true_airspeed
+            # self._sensor_data.diff_pressure = self._sensor_data.sim_true_airspeed
 
             # print("diff press = ", self._sensor_data.diff_pressure)
             self._connection.mav.hil_sensor_send(

@@ -19,7 +19,7 @@ from pegasus.simulator.params import ROBOTS, SIMULATION_ENVIRONMENTS
 from pegasus.simulator.logic.interface.pegasus_interface import PegasusInterface
 
 # Vehicle Manager to spawn Vehicles
-from pegasus.simulator.logic.backends import MavlinkBackend, MavlinkBackendConfig #, ROS2Backend
+from pegasus.simulator.logic.backends import MavlinkBackend, MavlinkBackendConfig, MavlinkBackendVTOL, MavlinkBackendVTOLConfig, ROS2Backend
 from pegasus.simulator.logic.vehicles.multirotor import Multirotor, MultirotorConfig
 from pegasus.simulator.logic.vehicles.vtol import VTOL, VTOLConfig
 from pegasus.simulator.logic.vehicle_manager import VehicleManager
@@ -211,7 +211,13 @@ class UIDelegate:
                 
 
                 # Create the multirotor configuration
-                mavlink_config = MavlinkBackendConfig({
+                # mavlink_config = MavlinkBackendConfig({
+                #     "vehicle_id": self._vehicle_id,
+                #     "px4_autolaunch": px4_autostart,
+                #     "px4_dir": px4_path,
+                #     "px4_vehicle_model": px4_airframe
+                # })
+                mavlink_config = MavlinkBackendVTOLConfig({
                     "vehicle_id": self._vehicle_id,
                     "px4_autolaunch": px4_autostart,
                     "px4_dir": px4_path,
@@ -220,7 +226,9 @@ class UIDelegate:
                 # TODO: Choose config based on vehicle instead of hardcode
                 # config_multirotor = MultirotorConfig()
                 config_multirotor = VTOLConfig()
-                config_multirotor.backends = [MavlinkBackend(mavlink_config)]
+
+                # config_multirotor.backends = [MavlinkBackend(mavlink_config)]
+                config_multirotor.backends = [MavlinkBackendVTOL(mavlink_config)]
 
                 #ros2 = ROS2Backend(self._vehicle_id)
 

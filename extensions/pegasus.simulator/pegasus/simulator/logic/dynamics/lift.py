@@ -60,6 +60,8 @@ class Lift(Aerodynamics):
         # Get the velocity of the vehicle expressed in the body frame of reference
         body_vel = state.linear_body_velocity
 
+        lift = self._lift_coefficients * self._air_density * self._wind_surface * body_vel[0]**2 / 2
+
         # Compute the component of the lift force to be applied in the body frame
-        self._lift_force = np.dot(self._lift_coefficients, body_vel)
+        self._lift_force = [0, 0, lift]
         return self._lift_force
