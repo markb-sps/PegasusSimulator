@@ -162,11 +162,15 @@ class Multirotor(Vehicle):
         else:
             desired_rotor_velocities = [0.0 for i in range(self._thrusters._num_rotors)]
 
+        # print("desired_rotor_vel = ", desired_rotor_velocities)
         # Input the desired rotor velocities in the thruster model
         self._thrusters.set_input_reference(desired_rotor_velocities)
 
         # Get the desired forces to apply to the vehicle
+        
         forces_z, _, rolling_moment = self._thrusters.update(self._state, dt)
+        # print("force z = ", forces_z)
+        # print("rolling_moment = ", rolling_moment)
 
         # Apply force to each rotor
         for i in range(4):
@@ -227,7 +231,8 @@ class Multirotor(Vehicle):
         Returns:
             list: A list of angular velocities [rad/s] to apply in reach rotor to accomplish suchs forces and torques
         """
-
+        print("force = ", force)
+        print("torque = ", torque)
         # Get the body frame of the vehicle
         rb = self._world.dc_interface.get_rigid_body(self._stage_prefix + "/body")
 

@@ -42,8 +42,28 @@ class PX4LaunchTool:
 
         # Set the environement variables that let PX4 know which vehicle model to use internally
         self.environment = os.environ
-        # self.environment["PX4_SIM_MODEL"] = px4_model
-        self.environment["PX4_SIM_MODEL"] = "standard_vtol"
+        self.environment["PX4_SIM_MODEL"] = px4_model
+        # self.environment["PX4_SIM_MODEL"] = "standard_vtol"
+        print("model = ", px4_model)
+        print("model = ", px4_model)
+        print("model = ", px4_model)
+        print("model = ", px4_model)
+        print("model = ", px4_model)
+        print("model = ", px4_model)
+        print("model = ", px4_model)
+        print("model = ", px4_model)
+        print("model = ", px4_model)
+        print("model = ", px4_model)
+        print("model = ", px4_model)
+        print("model = ", px4_model)
+        print("model = ", px4_model)
+        print("model = ", px4_model)
+        print("model = ", px4_model)
+        print("model = ", px4_model)
+        print("model = ", px4_model)
+        print("model = ", px4_model)
+        print("model = ", px4_model)
+        print("model = ", px4_model)
 
     def launch_px4(self):
         """

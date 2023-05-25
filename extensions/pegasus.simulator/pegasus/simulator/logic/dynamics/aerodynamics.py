@@ -1,12 +1,12 @@
 """
-| File: drag.py
-| Author: Marcelo Jacinto (marcelo.jacinto@tecnico.ulisboa.pt)
+| File: aerodynamics.py
+| Author: Mohammadreza Mousaei (mmousaei@andrew.cmu.edu)
 | Description: Base interface used to implement forces that should actuate on a rigidbody such as linear drag
-| License: BSD-3-Clause. Copyright (c) 2023, Marcelo Jacinto. All rights reserved.
+| License: BSD-3-Clause. Copyright (c) 2023. All rights reserved.
 """
 from pegasus.simulator.logic.state import State
 
-class Drag:
+class Aerodynamics:
     """
     Class that serves as a template for the implementation of Drag forces that actuate on a rigid body
     """
@@ -17,7 +17,7 @@ class Drag:
         """
 
     @property
-    def drag(self):
+    def force(self):
         """The drag force to be applied on the body frame of the vehicle
 
         Returns:

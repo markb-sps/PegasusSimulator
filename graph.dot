@@ -1,0 +1,43 @@
+digraph G {
+    graph [pad="0.5", ranksep="2", nodesep="1"]
+    node [shape=plain]
+    edge [fontname=helvetica, fontsize=10]
+
+    MAVLinkBackend [label=<
+        <table border="0" cellborder="1" cellspacing="0" cellpadding="4">
+            <tr><td bgcolor="lightblue"><b>MAVLinkBackend</b></td></tr>
+            <tr><td>vehicle: MultiRotor</td></tr>
+            <tr><td>load_vehicle(): initializes MultiRotor</td></tr>
+            <tr><td>connect(): establishes connection</td></tr>
+            <tr><td>send_mavlink_message(mav_message): sends mavlink message</td></tr>
+            <tr><td>disconnect(): closes connection</td></tr>
+            <tr><td>update(): updates vehicle state</td></tr>
+            <tr><td>update_sensor(sensor, value): updates sensor data</td></tr>
+            <tr><td>update_state(state): updates vehicle state</td></tr>
+        </table>>]
+
+    MultiRotor [label=<
+        <table border="0" cellborder="1" cellspacing="0" cellpadding="4">
+            <tr><td bgcolor="lightblue"><b>MultiRotor</b></td></tr>
+            <tr><td>backend: MAVLinkBackend</td></tr>
+            <tr><td>thrust_curve: QuadraticThrustCurve</td></tr>
+            <tr><td>set_controls(controls, dt): sets control values and updates state</td></tr>
+            <tr><td>get_state(): returns the vehicle's current state</td></tr>
+        </table>>]
+
+    QuadraticThrustCurve [label=<
+        <table border="0" cellborder="1" cellspacing="0" cellpadding="4">
+            <tr><td bgcolor="lightblue"><b>QuadraticThrustCurve</b></td></tr>
+            <tr><td>set_input_reference(input_reference): sets target rotor velocities</td></tr>
+            <tr><td>update(state, dt): computes rotor forces and torques</td></tr>
+            <tr><td>force, velocity, rolling_moment, rot_dir properties</td></tr>
+        </table>>]
+
+    MAVLinkBackend -> MultiRotor [label="load_vehicle()\ncalls MultiRotor constructor", fontcolor=blue, color=grey]
+    MAVLinkBackend -> MultiRotor [label="send_mavlink_message()\ncalls MultiRotor.set_controls()", fontcolor=blue, color=grey]
+    MultiRotor -> MAVLinkBackend [label="set_controls()\ncalls backend.update()", fontcolor=blue, color=grey]
+    MultiRotor -> MAVLinkBackend [label="set_controls()\ncalls backend.update_sensor()", fontcolor=blue, color=grey]
+    MultiRotor -> MAVLinkBackend [label="set_controls()\ncalls backend.update_state()", fontcolor=blue, color=grey]
+    MultiRotor -> QuadraticThrustCurve [label="set_controls()\ncalls QuadraticThrustCurve.set_input_reference()", fontcolor=blue, color=grey]
+    MultiRotor -> QuadraticThrustCurve [label="set_controls()\ncalls QuadraticThrustCurve.update()", fontcolor=blue, color=grey]
+}

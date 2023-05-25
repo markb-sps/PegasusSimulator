@@ -7,6 +7,7 @@ import carb
 # Sensors that can be used with the vehicles
 from pegasus.simulator.parser import Parser, SensorParser, ThrustersParser, DynamicsParser, BackendsParser
 from pegasus.simulator.logic.vehicles import MultirotorConfig
+from pegasus.simulator.logic.vehicles import VTOLConfig
 
 
 class VehicleParser(Parser):
@@ -77,7 +78,8 @@ class VehicleParser(Parser):
                 backends.append(backend)
 
         # Create a Multirotor config from the parsed data
-        multirotor_configuration = MultirotorConfig()
+        # multirotor_configuration = MultirotorConfig() TODO: Choose config based on vehicle instead of hardcode
+        multirotor_configuration = VTOLConfig()
         multirotor_configuration.usd_file = usd_model
         multirotor_configuration.thrust_curve = thrusters
         multirotor_configuration.drag = dynamics

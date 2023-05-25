@@ -67,6 +67,7 @@ class SensorMsg:
         # Airspeed Data
         self.new_press_data: bool = False
         self.diff_pressure: float = 0.0
+        self.new_airspeed_data: bool = False
 
         # GPS Data
         self.new_gps_data: bool = False
@@ -377,7 +378,7 @@ class MavlinkBackend(Backend):
         self._sensor_data.sim_lat = int(data["latitude_gt"] * 10000000)
         self._sensor_data.sim_lon = int(data["longitude_gt"] * 10000000)
         self._sensor_data.sim_alt = int(data["altitude_gt"] * 1000)
-
+    
     def update_bar_data(self, data):
         """Gets called by the 'update_sensor' method to update the current Barometer data
 
@@ -469,6 +470,7 @@ class MavlinkBackend(Backend):
         self._sensor_data.sim_true_airspeed = int(np.linalg.norm(lin_vel) * 100)  # TODO - add wind here
 
         self._sensor_data.new_sim_state = True
+        self._sensor_data.new_airspeed_data = True
 
     def input_reference(self):
         """Method that when implemented, should return a list of desired angular velocities to apply to the vehicle rotors
@@ -606,6 +608,13 @@ class MavlinkBackend(Backend):
 
         # Send the GPS messages
         self.send_gps_msgs(self._current_utime)
+        
+        # Send Ground Truth
+        # self.send_ground_truth(self._current_utime)
+
+        # Send the Airspeed messages
+        # self.send_airspeed_msgs(self._current_utime)
+        
 
     def poll_mavlink_messages(self):
         """
@@ -692,6 +701,10 @@ class MavlinkBackend(Backend):
             self._sensor_data.new_press_data = False
 
         try:
+            # print("abs press = ", self._sensor_data.abs_pressure)
+            self._sensor_data.diff_pressure = self._sensor_data.sim_true_airspeed
+
+            # print("diff press = ", self._sensor_data.diff_pressure)
             self._connection.mav.hil_sensor_send(
                 time_usec,
                 self._sensor_data.xacc,
@@ -746,6 +759,58 @@ class MavlinkBackend(Backend):
             )
         except:
             carb.log_warn("Could not send gps data through mavlink")
+    
+    def send_airspeed_msgs(self, time_usec: int):
+        carb.log_info("Sending Airspeed msgs")
+
+        if not self._sensor_data.new_airspeed_data:
+            return
+        
+        self._sensor_data.new_airspeed_data = False
+
+        try:
+            # self._connection.mav.airspeed_sensor_encode(
+            #     time_usec,
+            #     0,  # ID of the airspeed sensor (0 for the first sensor)
+            #     self._sensor_data.sim_true_airspeed,  # Airspeed value in meters per second
+            #     0,  # Temperature (not used)
+            #     0,  # Differential pressure (not used)
+            #     0,  # Ratio (not used)
+            #     0,  # Error count (not used)
+            #     0  # Flags (not used)
+            # )
+            # self._connection.mav.airspeed_send(
+            #     self._sensor_data.sim_true_airspeed,  # Airspeed value in meters per second
+            # )
+            # self._connection.mav.VFR_HUD_message(
+            #     airspeed=self._sensor_data.sim_true_airspeed,  # Airspeed value in meters per second
+            #     groundspeed=0,  # Groundspeed (not used)
+            #     heading=0,  # Heading (not used)
+            #     throttle=0,  # Throttle (not used)
+            #     alt=0,  # Altitude (not used)
+            #     climb=0  # Climb rate (not used)
+            # )
+            # self._connection.mav.vfr_hud_send(
+            #     10  # Airspeed value in meters per second
+            #     ,0
+            #     ,0
+            #     ,0
+            #     ,0
+            #     ,0
+            # )
+            # print("here")
+            # self._connection.mav.vfr_hud_send(
+            #     airspeed=self._sensor_data.sim_true_airspeed,  # Airspeed in m/s
+            #     groundspeed=self._sensor_data.velocity,  # Ground Speed in m/s
+            #     heading=self._sensor_data.ymag,  # Heading in degrees, clockwise from north
+            #     throttle=0,  # Throttle setting (0 to 100)
+            #     alt=0,  # Current altitude (MSL)
+            #     climb=0  # Current climb rate
+            # )
+            pass
+
+        except Exception as e:
+            carb.log_warn("Could not send airspeed data through mavlink. Exeption: " +str(e))
 
     def send_vision_msgs(self, time_usec: int):
         """
@@ -791,7 +856,27 @@ class MavlinkBackend(Backend):
             return
 
         self._sensor_data.new_sim_state = False
+        # print("ind airspeed: ", self._sensor_data.sim_ind_airspeed)
+        # print("true airspeed: ", self._sensor_data.sim_true_airspeed)
         try:
+            # self._connection.mav.hil_state_quaternion_send(
+            #     time_usec,
+            #     self._sensor_data.sim_attitude,
+            #     self._sensor_data.sim_angular_vel[0],
+            #     self._sensor_data.sim_angular_vel[1],
+            #     self._sensor_data.sim_angular_vel[2],
+            #     self._sensor_data.sim_lat,
+            #     self._sensor_data.sim_lon,
+            #     self._sensor_data.sim_alt,
+            #     self._sensor_data.sim_velocity_inertial[0],
+            #     self._sensor_data.sim_velocity_inertial[1],
+            #     self._sensor_data.sim_velocity_inertial[2],
+            #     self._sensor_data.sim_ind_airspeed,
+            #     self._sensor_data.sim_true_airspeed,
+            #     self._sensor_data.sim_acceleration[0],
+            #     self._sensor_data.sim_acceleration[1],
+            #     self._sensor_data.sim_acceleration[2],
+            # )
             self._connection.mav.hil_state_quaternion_send(
                 time_usec,
                 self._sensor_data.sim_attitude,
@@ -804,14 +889,14 @@ class MavlinkBackend(Backend):
                 self._sensor_data.sim_velocity_inertial[0],
                 self._sensor_data.sim_velocity_inertial[1],
                 self._sensor_data.sim_velocity_inertial[2],
-                self._sensor_data.sim_ind_airspeed,
+                np.abs(self._sensor_data.sim_ind_airspeed),
                 self._sensor_data.sim_true_airspeed,
                 self._sensor_data.sim_acceleration[0],
                 self._sensor_data.sim_acceleration[1],
                 self._sensor_data.sim_acceleration[2],
             )
-        except:
-            carb.log_warn("Could not send groundtruth through mavlink")
+        except Exception as e:
+            carb.log_warn("Could not send groundtruth through mavlink" + str(e))
 
     def handle_control(self, time_usec, controls, mode, flags):
         """
@@ -826,6 +911,7 @@ class MavlinkBackend(Backend):
 
         # Check if the vehicle is armed - Note: here we have to add a +1 since the code for armed is 128, but
         # pymavlink is return 129 (the end of the buffer)
+        # print("controls = ", controls)
         if mode == mavutil.mavlink.MAV_MODE_FLAG_SAFETY_ARMED + 1:
 
             carb.log_info("Parsing control input")

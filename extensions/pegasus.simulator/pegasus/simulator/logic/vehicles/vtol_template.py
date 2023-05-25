@@ -1,10 +1,3 @@
-"""
-| File: vtol.py
-| Author: Mohammadreza Mousae (mmousaei@andrew.cmu.edu)
-| License: BSD-3-Clause. Copyright (c) 2023. All rights reserved.
-| Description: Definition of the VTOL class which is used as the base for standard vehicles.
-"""
-
 import numpy as np
 
 # The vehicle interface
@@ -35,12 +28,11 @@ class VTOLConfig:
         # The USD file that describes the visual aspect of the vehicle (and some properties such as mass and moments of inertia)
         self.usd_file = ""
 
-        # The default thrust curve for a quadrotor and dynamics relating to drag
+        # The default thrust curve for a VTOL and dynamics relating to drag
         self.thrust_curve = QuadraticThrustCurve()
-
         self.drag = LinearDrag([0.50, 0.30, 0.0])
 
-        # The default sensors for a quadrotor
+        # The default sensors for a VTOL
         self.sensors = [Barometer(), IMU(), Magnetometer(), GPS()]
 
         # The backends for actually sending commands to the vehicle. By default use mavlink (with default mavlink configurations)
@@ -50,12 +42,12 @@ class VTOLConfig:
 
 
 class VTOL(Vehicle):
-    """VTOL class - It defines a base interface for creating a vtol
+    """VTOL class - It defines a base interface for creating a VTOL
     """
     def __init__(
         self,
         # Simulation specific configurations
-        stage_prefix: str = "quadrotor",
+        stage_prefix: str = "vtol",
         usd_file: str = "",
         vehicle_id: int = 0,
         # Spawning pose of the vehicle
@@ -63,15 +55,15 @@ class VTOL(Vehicle):
         init_orientation=[0.0, 0.0, 0.0, 1.0],
         config=VTOLConfig(),
     ):
-        """Initializes the vtol object
+        """Initializes the VTOL object
 
         Args:
-            stage_prefix (str): The name the vehicle will present in the simulator when spawned. Defaults to "quadrotor".
+            stage_prefix (str): The name the vehicle will present in the simulator when spawned. Defaults to "vtol".
             usd_file (str): The USD file that describes the looks and shape of the vehicle. Defaults to "".
             vehicle_id (int): The id to be used for the vehicle. Defaults to 0.
             init_pos (list): The initial position of the vehicle in the inertial frame (in ENU convention). Defaults to [0.0, 0.0, 0.07].
             init_orientation (list): The initial orientation of the vehicle in quaternion [qx, qy, qz, qw]. Defaults to [0.0, 0.0, 0.0, 1.0].
-            config (_type_, optional): _description_. Defaults to MultirotorConfig().
+            config (_type_, optional): _description_. Defaults to VTOLConfig().
         """
 
         # 1. Initiate the Vehicle object itself
@@ -90,28 +82,23 @@ class VTOL(Vehicle):
         # Get the thrust curve of the vehicle from the configuration
         self._thrusters = config.thrust_curve
         self._drag = config.drag
+        # TODO:add lift
 
-        # 4. Save the backend interface (if given in the configuration of the multirotor)
+        # 4. Save the backend interface (if given in the configuration of the VTOL)
         # and initialize them
         self._backends = config.backends
         for backend in self._backends:
             backend.initialize(self)
 
-        # Add a callbacks for the
+        # Add a callback for the MAV state
         self._world.add_physics_callback(self._stage_prefix + "/mav_state", self.update_sim_state)
 
-    def update_sensors(self, dt: float):
-        """Callback that is called at every physics steps and will call the sensor.update method to generate new
-        sensor data. For each data that the sensor generates, the backend.update_sensor method will also be called for
-        every backend. For example, if new data is generated for an IMU and we have a MavlinkBackend, then the update_sensor
-        method will be called for that backend so that this data can latter be sent thorugh mavlink.
+        # Initialize the ailerons, elevator, and rudder
+        self._ailerons = Ailerons()
+        self._elevator = Elevator()
+        self._rudder = Rudder()
 
-        Args:
-            dt (float): The time elapsed between the previous and current function calls (s).
-        """
-
-        # Call the update method for the sensor to update its values internally (if applicable)
-        for sensor in self._sensors:
+    for sensor in self._sensors:
             sensor_data = sensor.update(self._state, dt)
 
             # If some data was updated and we have a mavlink backend or ros backend (or other), then just update it
@@ -146,9 +133,8 @@ class VTOL(Vehicle):
 
     def update(self, dt: float):
         """
-        Method that computes and applies the forces to the vehicle in simulation based on the motor speed. 
-        This method must be implemented by a class that inherits this type. This callback
-        is called on every physics step.
+        Method that computes and applies the forces to the VTOL vehicle in simulation based on the control inputs.
+        This method must be implemented by a class that inherits this type. This callback is called on every physics step.
 
         Args:
             dt (float): The time elapsed between the previous and current function calls (s).
@@ -163,24 +149,30 @@ class VTOL(Vehicle):
         else:
             desired_rotor_velocities = [0.0 for i in range(self._thrusters._num_rotors)]
 
-        # print("desired_rotor_vel = ", desired_rotor_velocities)
         # Input the desired rotor velocities in the thruster model
         self._thrusters.set_input_reference(desired_rotor_velocities)
 
-        # Get the desired forces to apply to the vehicle
-        
-        forces_z, _, yaw_moment = self._thrusters.update(self._state, dt)
-        # print("force z = ", forces_z)
-        # print("yaw_moment = ", yaw_moment)
+        # Get the desired forces and torques to apply to the vehicle
+        rotor_forces, pusher_force, aileron_forces, elevator_force, rudder_force, yaw_moment = self._thrusters.update(self._state, dt)
 
-        # Apply force to each rotor
+        # Apply forces to quad frame rotors
         for i in range(4):
-
-            # Apply the force in Z on the rotor frame
-            self.apply_force([0.0, 0.0, forces_z[i]], body_part="/rotor" + str(i))
-
+            # Apply the force in the Z-direction on the rotor frame
+            self.apply_force([0.0, 0.0, rotor_forces[i]], body_part="/rotor" + str(i))
             # Generate the rotating propeller visual effect
-            self.handle_propeller_visual(i, forces_z[i], articulation)
+            self.handle_actuation_visual(i, rotor_forces[i], articulation)
+
+        # Apply force to the pusher rotor
+        self.apply_force([0.0, 0.0, pusher_force], body_part="/pusher_rotor")
+
+        # Apply forces to the ailerons
+        self.apply_force([aileron_forces, 0.0, 0.0], body_part="/ailerons")
+
+        # Apply force to the elevator
+        self.apply_force([0.0, elevator_force, 0.0], body_part="/elevator")
+
+        # Apply force to the rudder
+        self.apply_force([0.0, 0.0, rudder_force], body_part="/rudder")
 
         # Apply the torque to the body frame of the vehicle that corresponds to the rolling moment
         self.apply_torque([0.0, 0.0, yaw_moment], "/body")
@@ -192,91 +184,97 @@ class VTOL(Vehicle):
         # Call the update methods in all backends
         for backend in self._backends:
             backend.update(dt)
-
-    def handle_propeller_visual(self, rotor_number, force: float, articulation):
+    def handle_actuation_visual(self, actuator_name, control_input: float, articulation):
         """
-        Auxiliar method used to set the joint velocity of each rotor (for animation purposes) based on the 
-        amount of force being applied on each joint
+        Auxiliar method used to set the joint velocity of each actuator (for animation purposes) based on the 
+        control input being applied to each joint.
 
         Args:
-            rotor_number (int): The number of the rotor to generate the rotation animation
-            force (float): The force that is being applied on that rotor
-            articulation (_type_): The articulation group the joints of the rotors belong to
+            actuator_name (str): The name of the actuator to generate the animation.
+            control_input (float): The control input being applied to the actuator.
+            articulation (_type_): The articulation group the joints of the actuators belong to.
         """
 
-        # Rotate the joint to yield the visual of a rotor spinning (for animation purposes only)
-        joint = self._world.dc_interface.find_articulation_dof(articulation, "joint" + str(rotor_number))
+        # Find the joint corresponding to the actuator
+        joint = self._world.dc_interface.find_articulation_dof(articulation, actuator_name)
 
-        # Spinning when armed but not applying force
-        if 0.0 < force < 0.1:
-            self._world.dc_interface.set_dof_velocity(joint, 5 * self._thrusters.rot_dir[rotor_number])
-        # Spinning when armed and applying force
-        elif 0.1 <= force:
-            self._world.dc_interface.set_dof_velocity(joint, 100 * self._thrusters.rot_dir[rotor_number])
-        # Not spinning
+        # Set the joint velocity for actuation animation
+        if control_input > 0:
+            self._world.dc_interface.set_dof_velocity(joint, 100)
+        elif control_input < 0:
+            self._world.dc_interface.set_dof_velocity(joint, -100)
         else:
             self._world.dc_interface.set_dof_velocity(joint, 0)
-
     def force_and_torques_to_velocities(self, force: float, torque: np.ndarray):
         """
-        Auxiliar method used to get the target angular velocities for each rotor, given the total desired thrust [N] and
-        torque [Nm] to be applied in the multirotor's body frame.
+        Auxiliary method used to get the target angular velocities for each actuator, given the total desired thrust [N]
+        and torque [Nm] to be applied in the VTOL's body frame.
 
         Note: This method assumes a quadratic thrust curve. This method will be improved in a future update,
-        and a general thrust allocation scheme will be adopted. For now, it is made to work with multirotors directly.
+        and a general thrust allocation scheme will be adopted. For now, it is made to work with VTOLs directly.
 
         Args:
-            force (np.ndarray): A vector of the force to be applied in the body frame of the vehicle [N]
-            torque (np.ndarray): A vector of the torque to be applied in the body frame of the vehicle [Nm]
+            force (float): The desired total thrust to be applied in the body frame of the VTOL [N].
+            torque (np.ndarray): A vector of the torque to be applied in the body frame of the VTOL [Nm].
 
         Returns:
-            list: A list of angular velocities [rad/s] to apply in reach rotor to accomplish suchs forces and torques
+            list: A list of angular velocities [rad/s] to apply to each actuator to achieve the desired forces and torques.
         """
-        print("force = ", force)
-        print("torque = ", torque)
-        # Get the body frame of the vehicle
-        rb = self._world.dc_interface.get_rigid_body(self._stage_prefix + "/body")
 
-        # Get the rotors of the vehicle
-        rotors = [self._world.dc_interface.get_rigid_body(self._stage_prefix + "/rotor" + str(i)) for i in range(self._thrusters._num_rotors)]
+        # Get the body frame of the VTOL
+        body = self._world.dc_interface.get_rigid_body(self._stage_prefix + "/body")
 
-        # Get the relative position of the rotors with respect to the body frame of the vehicle (ignoring the orientation for now)
-        relative_poses = self._world.dc_interface.get_relative_body_poses(rb, rotors)
+        # Get the actuators of the VTOL
+        actuators = [
+            self._world.dc_interface.get_rigid_body(self._stage_prefix + "/rotor" + str(i)) for i in range(4)
+        ]
+        actuators.extend([
+            self._world.dc_interface.get_rigid_body(self._stage_prefix + "/pusher_rotor"),
+            self._world.dc_interface.get_rigid_body(self._stage_prefix + "/aileron_left"),
+            self._world.dc_interface.get_rigid_body(self._stage_prefix + "/aileron_right"),
+            self._world.dc_interface.get_rigid_body(self._stage_prefix + "/elevator"),
+            self._world.dc_interface.get_rigid_body(self._stage_prefix + "/rudder")
+        ])
 
-        # Define the alocation matrix
-        aloc_matrix = np.zeros((4, self._thrusters._num_rotors))
-        
-        # Define the first line of the matrix (T [N])
-        aloc_matrix[0, :] = np.array(self._thrusters._rotor_constant)                                           
+        # Get the relative positions of the actuators with respect to the body frame of the VTOL (ignoring orientation for now)
+        relative_poses = self._world.dc_interface.get_relative_body_poses(body, actuators)
 
-        # Define the second and third lines of the matrix (\tau_x [Nm] and \tau_y [Nm])
-        aloc_matrix[1, :] = np.array([relative_poses[i].p[1] * self._thrusters._rotor_constant[i] for i in range(self._thrusters._num_rotors)])
-        aloc_matrix[2, :] = np.array([-relative_poses[i].p[0] * self._thrusters._rotor_constant[i] for i in range(self._thrusters._num_rotors)])
+        # Define the allocation matrix
+        allocation_matrix = np.zeros((9, 9))
 
-        # Define the forth line of the matrix (\tau_z [Nm])
-        aloc_matrix[3, :] = np.array([self._thrusters._yaw_moment_coefficient[i] * self._thrusters._rot_dir[i] for i in range(self._thrusters._num_rotors)])
+        # Define the first row of the matrix (T [N])
+        allocation_matrix[0, :4] = self._thrusters._rotor_constant
 
-        # Compute the inverse allocation matrix, so that we can get the angular velocities (squared) from the total thrust and torques
-        aloc_inv = np.linalg.pinv(aloc_matrix)
+        # Define the second and third rows of the matrix (\tau_x [Nm] and \tau_y [Nm])
+        allocation_matrix[1, 4:8] = [relative_poses[i].p[1] * self._thrusters._rotor_constant[i] for i in range(4)]
+        allocation_matrix[2, 4:8] = [-relative_poses[i].p[0] * self._thrusters._rotor_constant[i] for i in range(4)]
 
-        # Compute the target angular velocities (squared)
-        squared_ang_vel = aloc_inv @ np.array([force, torque[0], torque[1], torque[2]])
+        # Define the fourth row of the matrix (\tau_z [Nm])
+        allocation_matrix[3, :4] = [self._thrusters._yaw_moment_coefficient[i] * self._thrusters._rot_dir[i] for i in range(4)]
 
-        # Making sure that there is no negative value on the target squared angular velocities
+        # Define the remaining rows for the pusher rotor, ailerons, elevator, and rudder
+        allocation_matrix[4, 8] = self._pusher_rotor_constant
+        allocation_matrix[5, 4] = self._aileron_constant
+        allocation_matrix[5, 6] = -self._aileron_constant
+        allocation_matrix[6, 7] = self._elevator_constant
+        allocation_matrix[7, 8] = self._rudder_constant
+
+        # Compute the inverse allocation matrix to obtain the angular velocities (squared)
+        allocation_inv = np.linalg.pinv(allocation_matrix)
+        squared_ang_vel = allocation_inv @ np.array([force, torque[0], torque[1], torque[2], 0.0, 0.0, 0.0, 0.0, 0.0])
+
+        # Ensure that there are no negative values in the target squared angular velocities
         squared_ang_vel[squared_ang_vel < 0] = 0.0
 
-        # ------------------------------------------------------------------------------------------------
-        # Saturate the inputs while preserving their relation to each other, by performing a normalization
-        # ------------------------------------------------------------------------------------------------
-        max_thrust_vel_squared = np.power(self._thrusters.max_rotor_velocity[0], 2)
+        # Saturate the inputs while preserving their relation to each other by normalizing
+        max_thrust_vel_squared = self._thrusters.max_rotor_velocity ** 2
         max_val = np.max(squared_ang_vel)
 
         if max_val >= max_thrust_vel_squared:
             normalize = np.maximum(max_val / max_thrust_vel_squared, 1.0)
-
             squared_ang_vel = squared_ang_vel / normalize
 
-        # Compute the angular velocities for each rotor in [rad/s]
+        # Compute the angular velocities for each actuator in [rad/s]
         ang_vel = np.sqrt(squared_ang_vel)
 
         return ang_vel
