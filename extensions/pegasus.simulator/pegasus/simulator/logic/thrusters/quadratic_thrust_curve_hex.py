@@ -1,6 +1,6 @@
 """
-| File: vtol_actuations.py
-| Author: Mohammadreza Mousaei
+| File: quadratic_thrust_curve_hex.py
+| Author: Marcelo Jacinto (marcelo.jacinto@tecnico.ulisboa.pt)
 | Descriptio: File that implements a quadratic thrust curve for rotors
 | License: BSD-3-Clause. Copyright (c) 2023, Marcelo Jacinto. All rights reserved.
 """
@@ -8,7 +8,7 @@ import numpy as np
 from pegasus.simulator.logic.state import State
 from pegasus.simulator.logic.thrusters.thrust_curve import ThrustCurve
 
-class VtolActuations(ThrustCurve):
+class QuadraticThrustCurveHex(ThrustCurve):
     """Class that implements the dynamics of rotors that can be described by a quadratic thrust curve
     """
     def __init__(self, config={}):
@@ -30,28 +30,30 @@ class VtolActuations(ThrustCurve):
         """
 
         # Get the total number of rotors to simulate
-        self._num_rotors = config.get("num_rotors", 5)
-        self._num_surfaces = config.get("num_surfaces", 4)
+        self._num_rotors = config.get("num_rotors", 6)
 
         # The rotor constant used for computing the total thrust produced by the rotor: T = rotor_constant * omega^2
-        kt = 8.54858e-6 * 4000
-        km = 1e-6 * 4000
-        self._rotor_constant = config.get("rotor_constant", [kt, kt, kt, kt, kt])
+        # kt = 8.54858e-6
+        # km = 1e-6
+        kt = 5.54858e-6
+        km = 5e-7
+        self._rotor_constant = config.get("rotor_constant", [kt, kt, kt, kt, kt, kt])
         assert len(self._rotor_constant) == self._num_rotors
 
         # The rotor constant used for computing the total torque generated about the vehicle Z-axis
-        self._yaw_moment_coefficient = config.get("yaw_moment_coefficient", [km, km, km, km, km])
+        self._yaw_moment_coefficient = config.get("yaw_moment_coefficient", [km, km, km, km, km, km])
         assert len(self._yaw_moment_coefficient) == self._num_rotors
 
         # Save the rotor direction of rotation
-        self._rot_dir = config.get("rot_dir", [-1, -1, 1, 1, 1])
+        self._rot_dir = config.get("rot_dir", [1, -1, 1, -1, -1, 1]) # Original px4 website
+        # self._rot_dir = config.get("rot_dir", [-1, 1, -1, 1, 1, -1])
         assert len(self._rot_dir) == self._num_rotors
 
         # Values for the minimum and maximum rotor velocity in rad/s
-        self.min_rotor_velocity = config.get("min_rotor_velocity", [0, 0, 0, 0, 0])
+        self.min_rotor_velocity = config.get("min_rotor_velocity", [0, 0, 0, 0, 0, 0])
         assert len(self.min_rotor_velocity) == self._num_rotors
         mx_v = 1100
-        self.max_rotor_velocity = config.get("max_rotor_velocity", [mx_v, mx_v, mx_v, mx_v, mx_v])
+        self.max_rotor_velocity = config.get("max_rotor_velocity", [mx_v, mx_v, mx_v, mx_v, mx_v, mx_v])
         assert len(self.max_rotor_velocity) == self._num_rotors
 
         # The actual speed references to apply to the vehicle rotor joints
@@ -65,10 +67,6 @@ class VtolActuations(ThrustCurve):
 
         # The actual rolling moment that is generated on the body frame of the vehicle
         self._yaw_moment = 0.0
-
-        self._rudder_coef = 0.00001
-        self._aileron_coef = 0.001
-        self._elevator_coef = 0.001
 
     def set_input_reference(self, input_reference):
         """
@@ -97,11 +95,6 @@ class VtolActuations(ThrustCurve):
 
             # Set the actual velocity that each rotor is spinning at (instanenous model - no delay introduced)
             # Only apply clipping of the input reference
-
-            # print("vel size = ", len(self._velocity))
-            # print("_input_reference size = ", len(self._input_reference))
-            # print("min_rotor_velocity size = ", len(self.min_rotor_velocity))
-            # print("max_rotor_velocity size = ", len(self.max_rotor_velocity))
             self._velocity[i] = np.maximum(
                 self.min_rotor_velocity[i], np.minimum(self._input_reference[i], self.max_rotor_velocity[i])
             )
@@ -111,18 +104,12 @@ class VtolActuations(ThrustCurve):
 
             # Compute the rolling moment coefficient
             yaw_moment += self._yaw_moment_coefficient[i] * np.power(self._velocity[i], 2.0) * self._rot_dir[i]
-        
+
         # Update the rolling moment variable
         self._yaw_moment = yaw_moment
 
-        body_vel = state.get_linear_body_velocity_ned_frd()
-        # self._yaw_moment += self._rudder_coef * self._input_reference[8] * body_vel[0]**2
-        
-        self._roll_moment = self._aileron_coef * self._input_reference[5] * body_vel[0]**2
-        self._pitch_moment = self._elevator_coef * self._input_reference[7] * body_vel[0]**2
-
         # Return the forces and velocities on each rotor and total torque applied on the body frame
-        return self._force, self._velocity, self._roll_moment, self._pitch_moment, self._yaw_moment
+        return self._force, self._velocity, self._yaw_moment
 
     @property
     def force(self):

@@ -5,7 +5,9 @@
 
 # Sensors that can be used with the vehicles
 from pegasus.simulator.parser import Parser
-from pegasus.simulator.logic.backends import MavlinkBackendConfig, MavlinkBackend, MavlinkBackendVTOL, MavlinkBackendVTOLConfig, ROS2Backend
+from pegasus.simulator.logic.backends import MavlinkBackendConfig, \
+        MavlinkBackend, MavlinkBackendVTOL, MavlinkBackendVTOLConfig, \
+        MavlinkBackendHex, MavlinkBackendHexConfig, ROS2Backend
 
 
 class BackendsParser(Parser):

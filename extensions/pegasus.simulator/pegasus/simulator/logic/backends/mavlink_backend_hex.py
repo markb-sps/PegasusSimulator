@@ -1,10 +1,10 @@
 """
-| File: mavlink_backend_vtol.py
+| File: mavlink_backend_hex.py
 | Author: Mohammadreza Mousaei 
 | Description: File that implements the Mavlink Backend for communication/control with/of the vehicle simulation
 | License: BSD-3-Clause. Copyright (c) 2023, Marcelo Jacinto. All rights reserved.
 """
-__all__ = ["MavlinkBackendVTOL", "MavlinkBackendVTOLConfig"]
+__all__ = ["MavlinkBackendHex", "MavlinkBackendHexConfig"]
 
 import carb
 import time
@@ -115,11 +115,10 @@ class ThrusterControl:
 
     def __init__(
         self,
-        num_rotors: int = 5,
-        num_surfaces: int = 4,
-        input_offset=[0, 0, 0, 0, 0, 0, 0, 0, 0],
-        input_scaling=[0, 0, 0, 0, 0, 0, 0, 0, 0],
-        zero_position_armed=[100, 100, 100, 100, 100, 100, 100, 100, 100],
+        num_rotors: int = 6,
+        input_offset=[0, 0, 0, 0, 0, 0],
+        input_scaling=[0, 0, 0, 0, 0, 0],
+        zero_position_armed=[100, 100, 100, 100, 100, 100],
     ):
         """Initialize the ThrusterControl object
 
@@ -131,20 +130,19 @@ class ThrusterControl:
         """
 
         self.num_rotors: int = num_rotors
-        self.num_surfaces: int = num_surfaces
 
         # Values to scale and offset the rotor control inputs received from PX4
-        assert len(input_offset) == (self.num_surfaces + self.num_rotors)
+        assert len(input_offset) == (self.num_rotors)
         self.input_offset = input_offset
 
-        assert len(input_scaling) == (self.num_surfaces + self.num_rotors)
+        assert len(input_scaling) == (self.num_rotors)
         self.input_scaling = input_scaling
 
-        assert len(zero_position_armed) == (self.num_surfaces + self.num_rotors)
+        assert len(zero_position_armed) == (self.num_rotors)
         self.zero_position_armed = zero_position_armed
 
         # The actual speed references to apply to the vehicle rotor joints
-        self._input_reference = [0.0 for i in range(self.num_rotors + self.num_surfaces)]
+        self._input_reference = [0.0 for i in range(self.num_rotors)]
         print(self._input_reference)
 
     @property
@@ -169,21 +167,20 @@ class ThrusterControl:
             return
 
         # Update the desired reference for every rotor (and saturate according to the min and max values)
-        for i in range(self.num_rotors + self.num_surfaces):
+        for i in range(self.num_rotors):
 
             # Compute the actual velocity reference to apply to each rotor
-            self._input_reference[i] = (controls[i] + self.input_offset[i]) * self.input_scaling[
-                i
-            ] + self.zero_position_armed[i]
+            self._input_reference[i] = (controls[i] + self.input_offset[i]) * self.input_scaling[i] \
+                                        + self.zero_position_armed[i]
 
     def zero_input_reference(self):
         """
         When this method is called, the input_reference is updated such that every rotor is stopped
         """
-        self._input_reference = [0.0 for i in range(self.num_rotors + self.num_surfaces)]
+        self._input_reference = [0.0 for i in range(self.num_rotors)]
 
 
-class MavlinkBackendVTOLConfig:
+class MavlinkBackendHexConfig:
     """
     An auxiliary data class used to store all the configurations for the mavlink communications.
     """
@@ -227,23 +224,22 @@ class MavlinkBackendVTOLConfig:
 
         # Configurations to interpret the rotors control messages coming from mavlink
         self.enable_lockstep: bool = config.get("enable_lockstep", True)
-        self.num_rotors: int = config.get("num_rotors", 5)
-        self.num_surfaces: int = config.get("num_surfaces", 4)
-        self.input_offset = config.get("input_offset", [0, 0, 0, 0, 0, 0, 0, 0, 0])
-        self.input_scaling = config.get("input_scaling", [1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0])
-        self.zero_position_armed = config.get("zero_position_armed", [100, 100, 100, 100, 100, 100, 100, 100, 100])
+        self.num_rotors: int = config.get("num_rotors", 6)
+        self.input_offset = config.get("input_offset", [0, 0, 0, 0, 0, 0])
+        self.input_scaling = config.get("input_scaling", [1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0])
+        self.zero_position_armed = config.get("zero_position_armed", [100, 100, 100, 100, 100, 100])
 
         # The update rate at which we will be sending data to mavlink (TODO - remove this from here in the future
         # and infer directly from the function calls)
         self.update_rate: float = config.get("update_rate", 250.0)  # [Hz]
 
 
-class MavlinkBackendVTOL(Backend):
+class MavlinkBackendHex(Backend):
     """ The Mavlink Backend used to receive the vehicle's state and sensor data in order to send to PX4 through mavlink. It also
     receives via mavlink the thruster commands to apply to each vehicle rotor.
     """
 
-    def __init__(self, config=MavlinkBackendVTOLConfig()):
+    def __init__(self, config=MavlinkBackendHexConfig()):
         """Initialize the MavlinkBackendVTOL
 
         Args:
@@ -282,7 +278,7 @@ class MavlinkBackendVTOL(Backend):
 
         # Vehicle Rotor data received from mavlink
         self._rotor_data: ThrusterControl = ThrusterControl(
-            config.num_rotors, config.num_surfaces, config.input_offset, config.input_scaling, config.zero_position_armed
+            config.num_rotors, config.input_offset, config.input_scaling, config.zero_position_armed
         )
 
         # Vehicle actuator control data
@@ -568,7 +564,7 @@ class MavlinkBackendVTOL(Backend):
         if an hearbeat is received via mavlink. When this first heartbeat is received poll for mavlink messages
         """
 
-        carb.log_warn("Waiting for first hearbeat")
+        # carb.log_warn("Waiting for first hearbeat")
         result = self._connection.wait_heartbeat(blocking=False)
 
         if result is not None:

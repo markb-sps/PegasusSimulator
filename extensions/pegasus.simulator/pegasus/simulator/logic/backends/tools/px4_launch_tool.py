@@ -35,7 +35,8 @@ class PX4LaunchTool:
         # Configurations to whether autostart px4 (SITL) automatically or have the user launch it manually on another
         # terminal
         self.px4_dir = px4_dir
-        self.rc_script = self.px4_dir + "/ROMFS/px4fmu_common/init.d-posix/rcS_isaac"
+        # self.rc_script = self.px4_dir + "/ROMFS/px4fmu_common/init.d-posix/rcS_isaac"
+        self.rc_script = self.px4_dir + "/ROMFS/px4fmu_common/init.d-posix/rcS"
 
         # Create a temporary filesystem for px4 to write data to/from (and modify the origin rcS files)
         self.root_fs = tempfile.TemporaryDirectory()
@@ -43,32 +44,20 @@ class PX4LaunchTool:
         # Set the environement variables that let PX4 know which vehicle model to use internally
         self.environment = os.environ
         self.environment["PX4_SIM_MODEL"] = px4_model
-        # self.environment["PX4_SIM_MODEL"] = "standard_vtol"
-        print("model = ", px4_model)
-        print("model = ", px4_model)
-        print("model = ", px4_model)
-        print("model = ", px4_model)
-        print("model = ", px4_model)
-        print("model = ", px4_model)
-        print("model = ", px4_model)
-        print("model = ", px4_model)
-        print("model = ", px4_model)
-        print("model = ", px4_model)
-        print("model = ", px4_model)
-        print("model = ", px4_model)
-        print("model = ", px4_model)
-        print("model = ", px4_model)
-        print("model = ", px4_model)
-        print("model = ", px4_model)
-        print("model = ", px4_model)
-        print("model = ", px4_model)
-        print("model = ", px4_model)
-        print("model = ", px4_model)
 
     def launch_px4(self):
         """
         Method that will launch a px4 instance with the specified configuration
         """
+        print("PX4 command:   " + self.px4_dir + "/build/px4_sitl_default/bin/px4 " +
+                self.px4_dir + "/ROMFS/px4fmu_common/ " +
+                "-s " +
+                self.rc_script + 
+                "-i " +
+                str(self.vehicle_id) +
+                "-d")
+        print("root_fs = ", self.root_fs.name)
+        print("env = ", self.environment)
         self.px4_process = subprocess.Popen(
             [
                 self.px4_dir + "/build/px4_sitl_default/bin/px4",

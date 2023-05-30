@@ -29,7 +29,7 @@ class Lift(Aerodynamics):
         # The linear lift coefficients of the vehicle's body frame
         self._lift_coefficients = (lift_coefficients)
         self._air_density = 1.293
-        self._wind_surface = 0.1
+        self._wind_surface = 32
 
         # The lift force to apply on the vehicle's body frame
         self._lift_force = np.array([0.0, 0.0, 0.0])

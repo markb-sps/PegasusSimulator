@@ -194,10 +194,10 @@ class WidgetWindow(ui.Window):
         Method that implements a frame that allows the user to choose which robot that is about to be spawned
         """
 
-        # Auxiliary function to handle the "switch behaviour" of the buttons that are used to choose between a px4 or ROS2 backend
+        # Auxiliary function to handle the "switch behavior" of the buttons that are used to choose between a PX4 or ROS2 backend
         def handle_px4_ros_switch(self, px4_button, ros2_button, button):
 
-            # Handle the UI of both buttons switching of and on (To make it prettier)
+            # Handle the UI of both buttons switching off and on (To make it prettier)
             if button == "px4":
                 px4_button.enabled = False
                 ros2_button.enabled = True
@@ -229,6 +229,16 @@ class WidgetWindow(ui.Window):
                     for robot in ROBOTS:
                         dropdown_menu.model.append_child_item(None, ui.SimpleStringModel(robot))
                     self._delegate.set_vehicle_dropdown(dropdown_menu.model)
+
+                    # Handler for the vehicle model selection change
+                    def vehicle_model_selection_changed(selected_index):
+                        vehicle_model = dropdown_menu.model.item(selected_index).value
+                        self._delegate.set_px4_airframe_field_value(vehicle_model)
+                    
+                    dropdown_menu.model.add_item_changed_fn(self._delegate.vehicle_changed)
+                    # combo_sub = dropdown_menu.subscribe_item_changed_fn(self._delegate.vehicle_changed)
+                    # dropdown_menu.set_on_value_changed(vehicle_model_selection_changed)
+
 
                 with ui.HStack():
                     ui.Label("Vehicle ID", name="label", width=WidgetWindow.LABEL_PADDING)
@@ -300,6 +310,7 @@ class WidgetWindow(ui.Window):
                     clicked_fn=self._delegate.on_load_vehicle,
                     style=WidgetWindow.BUTTON_BASE_STYLE,
                 )
+
 
     def _viewport_camera_frame(self):
         """

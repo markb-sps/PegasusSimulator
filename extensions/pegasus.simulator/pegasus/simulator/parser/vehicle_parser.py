@@ -6,8 +6,7 @@ import carb
 
 # Sensors that can be used with the vehicles
 from pegasus.simulator.parser import Parser, SensorParser, ThrustersParser, DynamicsParser, BackendsParser
-from pegasus.simulator.logic.vehicles import MultirotorConfig
-from pegasus.simulator.logic.vehicles import VTOLConfig
+from pegasus.simulator.logic.vehicles import MultirotorConfig, VTOLConfig, HexConfig
 
 
 class VehicleParser(Parser):

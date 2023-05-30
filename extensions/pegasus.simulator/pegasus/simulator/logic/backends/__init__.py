@@ -6,4 +6,5 @@
 from .backend import Backend
 from .mavlink_backend import MavlinkBackend, MavlinkBackendConfig
 from .mavlink_backend_vtol import MavlinkBackendVTOL, MavlinkBackendVTOLConfig
+from .mavlink_backend_hex import MavlinkBackendHex, MavlinkBackendHexConfig
 from .ros2_backend import ROS2Backend

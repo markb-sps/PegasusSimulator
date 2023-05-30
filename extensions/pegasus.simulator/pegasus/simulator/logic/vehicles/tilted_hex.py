@@ -1,5 +1,5 @@
 """
-| File: vtol.py
+| File: tilted_hex.py
 | Author: Mohammadreza Mousaei (mmousaei@andrew.cmu.edu)
 | License: BSD-3-Clause. Copyright (c) 2023. All rights reserved.
 | Description: Definition of the VTOL class which is used as the base for standard vehicles.
@@ -11,36 +11,34 @@ import numpy as np
 from pegasus.simulator.logic.vehicles.vehicle import Vehicle
 
 # Mavlink interface
-from pegasus.simulator.logic.backends.mavlink_backend_vtol import MavlinkBackendVTOL
+from pegasus.simulator.logic.backends.mavlink_backend_hex import MavlinkBackendHex
 
 # Sensors and dynamics setup
 from pegasus.simulator.logic.dynamics import LinearDrag
-from pegasus.simulator.logic.dynamics import Lift
-from pegasus.simulator.logic.thrusters import VtolActuations
+from pegasus.simulator.logic.thrusters import QuadraticThrustCurveHex
 from pegasus.simulator.logic.sensors import Barometer, IMU, Magnetometer, GPS
 from pegasus.simulator.logic.interface.pegasus_interface import PegasusInterface
 
-class VTOLConfig:
+class HexConfig:
     """
     A data class that is used for configuring a VTOL
     """
 
     def __init__(self):
         """
-        Initialization of the VTOLConfig class
+        Initialization of the HexConfig class
         """
 
         # Stage prefix of the vehicle when spawning in the world
-        self.stage_prefix = "vtol"
+        self.stage_prefix = "hex"
 
         # The USD file that describes the visual aspect of the vehicle (and some properties such as mass and moments of inertia)
         self.usd_file = ""
 
         # The default thrust curve for a quadrotor and dynamics relating to drag
-        self.actuations = VtolActuations()
+        self.thrust_curve = QuadraticThrustCurveHex()
 
         self.drag = LinearDrag([0.50, 0.30, 0.0])
-        self.lift = Lift(1.5)
 
         # The default sensors for a quadrotor
         self.sensors = [Barometer(), IMU(), Magnetometer(), GPS()]
@@ -48,24 +46,24 @@ class VTOLConfig:
         # The backends for actually sending commands to the vehicle. By default use mavlink (with default mavlink configurations)
         # [Can be None as well, if we do not desired to use PX4 with this simulated vehicle]. It can also be a ROS2 backend
         # or your own custom Backend implementation!
-        self.backends = [MavlinkBackendVTOL()]
+        self.backends = [MavlinkBackendHex()]
 
 
-class VTOL(Vehicle):
-    """VTOL class - It defines a base interface for creating a vtol
+class TiltedHex(Vehicle):
+    """TiltedHex class - It defines a base interface for creating a TiltedHex
     """
     def __init__(
         self,
         # Simulation specific configurations
-        stage_prefix: str = "vtol",
+        stage_prefix: str = "hex",
         usd_file: str = "",
         vehicle_id: int = 0,
         # Spawning pose of the vehicle
         init_pos=[0.0, 0.0, 0.07],
         init_orientation=[0.0, 0.0, 0.0, 1.0],
-        config=VTOLConfig(),
+        config=HexConfig(),
     ):
-        """Initializes the vtol object
+        """Initializes the tilted hex object
 
         Args:
             stage_prefix (str): The name the vehicle will present in the simulator when spawned. Defaults to "quadrotor".
@@ -73,7 +71,7 @@ class VTOL(Vehicle):
             vehicle_id (int): The id to be used for the vehicle. Defaults to 0.
             init_pos (list): The initial position of the vehicle in the inertial frame (in ENU convention). Defaults to [0.0, 0.0, 0.07].
             init_orientation (list): The initial orientation of the vehicle in quaternion [qx, qy, qz, qw]. Defaults to [0.0, 0.0, 0.0, 1.0].
-            config (_type_, optional): _description_. Defaults to VTOLConfig().
+            config (_type_, optional): _description_. Defaults to HexConfig().
         """
 
         # 1. Initiate the Vehicle object itself
@@ -90,9 +88,8 @@ class VTOL(Vehicle):
 
         # 3. Setup the dynamics of the system
         # Get the thrust curve of the vehicle from the configuration
-        self._thrusters = config.actuations
+        self._thrusters = config.thrust_curve
         self._drag = config.drag
-        self._lift = config.lift
 
         # 4. Save the backend interface (if given in the configuration of the multirotor)
         # and initialize them
@@ -171,14 +168,12 @@ class VTOL(Vehicle):
 
         # Get the desired forces to apply to the vehicle
         
-        forces, _, roll_moment, pitch_moment, yaw_moment = self._thrusters.update(self._state, dt)
+        forces, _, yaw_moment = self._thrusters.update(self._state, dt)
         # print("force z = ", forces)
-        print("yaw_moment = ", yaw_moment)
-        print("roll_moment = ", roll_moment)
-        print("pitch_moment = ", pitch_moment)
+        # print("yaw_moment = ", yaw_moment)
 
         # Apply force to each rotor
-        for i in range(4):
+        for i in range(6):
 
             # Apply the force in Z on the rotor frame
             self.apply_force([0.0, 0.0, forces[i]], body_part="/rotor" + str(i))
@@ -187,24 +182,13 @@ class VTOL(Vehicle):
             self.handle_propeller_visual(i, forces[i], articulation)
 
         
-        self.apply_force([forces[4], 0.0, 0.0], body_part="/body")
-        self.handle_propeller_visual(4, forces[4], articulation)
-        self.handle_surface_visual(5, self._thrusters._input_reference[5], articulation)
-        self.handle_surface_visual(6, -self._thrusters._input_reference[6], articulation)
-        self.handle_surface_visual(7, self._thrusters._input_reference[7], articulation)
-        self.handle_surface_visual(8, self._thrusters._input_reference[8], articulation)
         # Apply the torque to the body frame of the vehicle that corresponds to the rolling moment
-        self.apply_torque([roll_moment, pitch_moment, yaw_moment], "/body")
-        # self.apply_torque([0.0, 0.0, yaw_moment], "/body")
+        self.apply_torque([0.0, 0.0, yaw_moment], "/body")
 
         # Compute the total linear drag force to apply to the vehicle's body frame
         drag = self._drag.update(self._state, dt)
-        lift = self._lift.update(self._state, dt)
-
-        print("lift = ", lift)
 
         self.apply_force(drag, body_part="/body")
-        self.apply_force(lift, body_part="/body")
 
         # Call the update methods in all backends
         for backend in self._backends:
@@ -227,9 +211,9 @@ class VTOL(Vehicle):
         # Spinning when armed but not applying force
         if 0.0 < force < 0.1:
             if(rotor_number == 4):
-                self._world.dc_interface.set_dof_velocity(joint, 0 * self._thrusters.rot_dir[rotor_number])
-            else:
                 self._world.dc_interface.set_dof_velocity(joint, 5 * self._thrusters.rot_dir[rotor_number])
+            else:
+                self._world.dc_interface.set_dof_velocity(joint, 100 * self._thrusters.rot_dir[rotor_number])
         # Spinning when armed and applying force
         elif 0.1 <= force:
             self._world.dc_interface.set_dof_velocity(joint, 100 * self._thrusters.rot_dir[rotor_number])
@@ -237,29 +221,6 @@ class VTOL(Vehicle):
         else:
             self._world.dc_interface.set_dof_velocity(joint, 0)
     
-    def handle_surface_visual(self, joint_number, force: float, articulation):
-        """
-        Auxiliar method used to set the joint velocity of each rotor (for animation purposes) based on the 
-        amount of force being applied on each joint
-
-        Args:
-            rotor_number (int): The number of the rotor to generate the rotation animation
-            force (float): The force that is being applied on that rotor
-            articulation (_type_): The articulation group the joints of the rotors belong to
-        """
-
-        # Rotate the joint to yield the visual of a rotor spinning (for animation purposes only)
-        joint = self._world.dc_interface.find_articulation_dof(articulation, "joint" + str(joint_number))
-
-        # Spinning when armed but not applying force
-        if 0.0 < force < 0.1:
-            self._world.dc_interface.set_dof_velocity(joint, 0)
-        # Spinning when armed and applying force
-        elif 0.1 <= force:
-            self._world.dc_interface.set_dof_velocity(joint, 100)
-        # Not spinning
-        else:
-            self._world.dc_interface.set_dof_velocity(joint, 0)
 
     def force_and_torques_to_velocities(self, force: float, torque: np.ndarray):
         """

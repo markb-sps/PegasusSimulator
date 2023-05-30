@@ -19,9 +19,12 @@ from pegasus.simulator.params import ROBOTS, SIMULATION_ENVIRONMENTS
 from pegasus.simulator.logic.interface.pegasus_interface import PegasusInterface
 
 # Vehicle Manager to spawn Vehicles
-from pegasus.simulator.logic.backends import MavlinkBackend, MavlinkBackendConfig, MavlinkBackendVTOL, MavlinkBackendVTOLConfig, ROS2Backend
+from pegasus.simulator.logic.backends import MavlinkBackend, MavlinkBackendConfig, \
+        MavlinkBackendVTOL, MavlinkBackendVTOLConfig, ROS2Backend, \
+        MavlinkBackendHex, MavlinkBackendHexConfig
 from pegasus.simulator.logic.vehicles.multirotor import Multirotor, MultirotorConfig
 from pegasus.simulator.logic.vehicles.vtol import VTOL, VTOLConfig
+from pegasus.simulator.logic.vehicles.tilted_hex import TiltedHex, HexConfig
 from pegasus.simulator.logic.vehicle_manager import VehicleManager
 
 
@@ -52,6 +55,7 @@ class UIDelegate:
 
         # Attribute that hold the currently selected vehicle from the dropdown menu
         self._vehicle_dropdown: ui.AbstractItemModel = None
+        self._vehicle_my_dropdown: ui.AbstractItemModel = None
         self._vehicles_names = list(ROBOTS.keys())
 
         # Get an instance of the vehicle manager
@@ -77,6 +81,7 @@ class UIDelegate:
         self._px4_airframe_field: ui.AbstractValueModel = None
         # self._px4_airframe: str = 'iris'
         self._px4_airframe: str = 'standard_vtol'
+        self._vehicle_type = 0
 
     def set_window_bind(self, window):
         self._window = window
@@ -96,6 +101,9 @@ class UIDelegate:
     def set_vehicle_dropdown(self, vehicle_dropdown_model: ui.AbstractItemModel):
         self._vehicle_dropdown = vehicle_dropdown_model
 
+    def set_my_vehicle_dropdown(self, vehicle_dropdown_model: ui.AbstractItemModel):
+        self._vehicle_my_dropdown = vehicle_dropdown_model
+
     def set_vehicle_id_field(self, vehicle_id_field: ui.AbstractValueModel):
         self._vehicle_id_field = vehicle_id_field
 
@@ -112,12 +120,32 @@ class UIDelegate:
     def set_px4_airframe_field(self, airframe_field_model: ui.AbstractValueModel):
         self._px4_airframe_field = airframe_field_model
 
+    
+
     """
     ---------------------------------------------------------------------
     Callbacks to handle user interaction with the extension widget window
     ---------------------------------------------------------------------
     """
 
+    def vehicle_changed(self, item_model: ui.AbstractItemModel, item: ui.AbstractItem):
+        # value_model = item_model.get_item_value_model(item)
+        # current_index = value_model.as_int
+        # print(f"index {current_index}.")
+        print("vehichle index = ", self._vehicle_dropdown.get_item_value_model().as_int)
+        if(self._vehicle_dropdown.get_item_value_model().as_int == 1):
+            self._px4_airframe = "iris"
+            self._vehicle_type = 1
+        elif(self._vehicle_dropdown.get_item_value_model().as_int == 3):
+            self._px4_airframe = "hexa_x_tilt"
+            # self._px4_airframe = "iris"
+            self._vehicle_type = 2
+            self._px4_dir = "/home/honda/workspace/aerial_manipulation_ws/src/Firmware"
+        
+        else:
+            self._vehicle_type = 0
+            self._px4_airframe = "standard_vtol"
+        
     def on_load_scene(self):
         """
         Method that should be invoked when the button to load the selected world is pressed
@@ -207,49 +235,68 @@ class UIDelegate:
                 px4_path = os.path.expanduser(self._px4_directory_field.get_value_as_string())
 
                 # Read the PX4 airframe from the field
-                px4_airframe = self._px4_airframe_field.get_value_as_string()
+                # px4_airframe = self._px4_airframe_field.get_value_as_string()
+                px4_airframe = self._px4_airframe
+
+                print("px4 dir = ", self._px4_dir)
+                print("vehicle type = ", self._vehicle_type)
+                print("airframe = " + px4_airframe)
+                
+                if(self._vehicle_type == 0): #VTOL
+                    mavlink_config = MavlinkBackendVTOLConfig({
+                        "vehicle_id": self._vehicle_id,
+                        "px4_autolaunch": px4_autostart,
+                        "px4_dir": px4_path,
+                        "px4_vehicle_model": px4_airframe
+                    })
+                    config_multirotor = VTOLConfig()
+                    config_multirotor.backends = [MavlinkBackendVTOL(mavlink_config)]
+                    VTOL(
+                        "/World/vtol",
+                        ROBOTS[selected_robot],
+                        self._vehicle_id,
+                        pos,
+                        Rotation.from_euler("XYZ", euler_angles, degrees=True).as_quat(),
+                        config=config_multirotor,
+                    )
+                elif(self._vehicle_type == 1): #Quadrotor
+                    mavlink_config = MavlinkBackendConfig({
+                        "vehicle_id": self._vehicle_id,
+                        "px4_autolaunch": px4_autostart,
+                        "px4_dir": px4_path,
+                        "px4_vehicle_model": px4_airframe
+                    })
+                    config_multirotor = MultirotorConfig()
+                    config_multirotor.backends = [MavlinkBackend(mavlink_config)]
+                    Multirotor(
+                        "/World/quadrotor",
+                        ROBOTS[selected_robot],
+                        self._vehicle_id,
+                        pos,
+                        Rotation.from_euler("XYZ", euler_angles, degrees=True).as_quat(),
+                        config=config_multirotor,
+                    )
+                elif(self._vehicle_type == 2): #Tilted Hex
+                    mavlink_config = MavlinkBackendHexConfig({
+                        "vehicle_id": self._vehicle_id,
+                        "px4_autolaunch": px4_autostart,
+                        "px4_dir": px4_path,
+                        "px4_vehicle_model": px4_airframe
+                    })
+                    config_multirotor = HexConfig()
+                    config_multirotor.backends = [MavlinkBackendHex(mavlink_config)]
+                    TiltedHex(
+                        "/World/hexarotor",
+                        ROBOTS[selected_robot],
+                        self._vehicle_id,
+                        pos,
+                        Rotation.from_euler("XYZ", euler_angles, degrees=True).as_quat(),
+                        config=config_multirotor,
+                    )
+
                 
 
-                # Create the multirotor configuration
-                # mavlink_config = MavlinkBackendConfig({
-                #     "vehicle_id": self._vehicle_id,
-                #     "px4_autolaunch": px4_autostart,
-                #     "px4_dir": px4_path,
-                #     "px4_vehicle_model": px4_airframe
-                # })
-                mavlink_config = MavlinkBackendVTOLConfig({
-                    "vehicle_id": self._vehicle_id,
-                    "px4_autolaunch": px4_autostart,
-                    "px4_dir": px4_path,
-                    "px4_vehicle_model": px4_airframe
-                })
-                # TODO: Choose config based on vehicle instead of hardcode
-                # config_multirotor = MultirotorConfig()
-                config_multirotor = VTOLConfig()
-
-                # config_multirotor.backends = [MavlinkBackend(mavlink_config)]
-                config_multirotor.backends = [MavlinkBackendVTOL(mavlink_config)]
-
                 #ros2 = ROS2Backend(self._vehicle_id)
-
-                # Try to spawn the selected robot in the world to the specified namespace
-                # TODO: Choose config based on vehicle instead of hardcode
-                # Multirotor(
-                #     "/World/quadrotor",
-                #     ROBOTS[selected_robot],
-                #     self._vehicle_id,
-                #     pos,
-                #     Rotation.from_euler("XYZ", euler_angles, degrees=True).as_quat(),
-                #     config=config_multirotor,
-                # )
-                VTOL(
-                    "/World/vtol",
-                    ROBOTS[selected_robot],
-                    self._vehicle_id,
-                    pos,
-                    Rotation.from_euler("XYZ", euler_angles, degrees=True).as_quat(),
-                    config=config_multirotor,
-                )
 
             # Log that a vehicle of the type multirotor was spawned in the world via the extension UI
                 carb.log_info("Spawned the robot: " + selected_robot + " using the Pegasus Simulator UI")
