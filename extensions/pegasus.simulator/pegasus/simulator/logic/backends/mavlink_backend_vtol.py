@@ -327,6 +327,8 @@ class MavlinkBackendVTOL(Backend):
             self.update_bar_data(data)
         elif sensor_type == "Magnetometer":
             self.update_mag_data(data)
+        elif sensor_type == 'Airspeed':
+            self.update_airspeed_data(data)
         # If the data received is not from one of the above sensors, then this backend does
         # not support that sensor and it will just ignore it
         else:
@@ -396,6 +398,21 @@ class MavlinkBackendVTOL(Backend):
 
         # Signal that we have new Barometer data
         self._sensor_data.new_bar_data = True
+    
+    def update_airspeed_data(self, data):
+        """Gets called by the 'update_sensor' method to update the current Airspeed data
+
+        Args:
+            data (dict): The data produced by an Barometer sensor
+        """
+
+        # Airspeed data
+        self._sensor_data.airspeed = data["airspeed"]
+
+        # Signal that we have new airspeed data
+        self._sensor_data.new_airspeed_data = True
+
+        self._sensor_data.new_press_data = True
 
     def update_mag_data(self, data):
         """Gets called by the 'update_sensor' method to update the current Vision data
@@ -473,7 +490,6 @@ class MavlinkBackendVTOL(Backend):
         self._sensor_data.sim_true_airspeed = int(np.linalg.norm(lin_vel) * 100)  # TODO - add wind here
 
         self._sensor_data.new_sim_state = True
-        self._sensor_data.new_airspeed_data = True
 
     def input_reference(self):
         """Method that when implemented, should return a list of desired angular velocities to apply to the vehicle rotors
@@ -698,12 +714,18 @@ class MavlinkBackendVTOL(Backend):
             fields_updated = fields_updated | SensorSource.BARO
             self._sensor_data.new_bar_data = False
 
-        if self._sensor_data.new_press_data:
+        if self._sensor_data.new_press_data and self._sensor_data.new_bar_data:
+
+            # v**2 = (P_diff - P_static) * 1.661
+            # https://www.vcalc.com/wiki/vCalc/Air+Speed
+            self._sensor_data.diff_pressure = self._sensor_data.airspeed**2/1.661 + self._sensor_data.abs_pressure
+
             # Set the bit field to signal that we are sending updated diff pressure data
             fields_updated = fields_updated | SensorSource.DIFF_PRESS
             self._sensor_data.new_press_data = False
 
         try:
+            print("fields_updated",format(fields_updated, "b"))
             # print("abs press = ", self._sensor_data.abs_pressure)
             # self._sensor_data.diff_pressure = self._sensor_data.sim_true_airspeed
 
@@ -722,7 +744,7 @@ class MavlinkBackendVTOL(Backend):
                 self._sensor_data.abs_pressure,
                 self._sensor_data.diff_pressure,
                 self._sensor_data.pressure_alt,
-                self._sensor_data.altitude,
+                self._sensor_data.temperature,
                 fields_updated,
             )
         except:

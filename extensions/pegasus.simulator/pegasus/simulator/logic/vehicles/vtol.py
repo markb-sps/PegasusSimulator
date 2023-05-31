@@ -17,7 +17,7 @@ from pegasus.simulator.logic.backends.mavlink_backend_vtol import MavlinkBackend
 from pegasus.simulator.logic.dynamics import LinearDrag
 from pegasus.simulator.logic.dynamics import Lift
 from pegasus.simulator.logic.thrusters import VtolActuations
-from pegasus.simulator.logic.sensors import Barometer, IMU, Magnetometer, GPS
+from pegasus.simulator.logic.sensors import Barometer, IMU, Magnetometer, GPS, Airspeed
 from pegasus.simulator.logic.interface.pegasus_interface import PegasusInterface
 
 class VTOLConfig:
@@ -43,7 +43,7 @@ class VTOLConfig:
         self.lift = Lift(1.5)
 
         # The default sensors for a quadrotor
-        self.sensors = [Barometer(), IMU(), Magnetometer(), GPS()]
+        self.sensors = [Barometer(), IMU(), Magnetometer(), GPS(), Airspeed()]
 
         # The backends for actually sending commands to the vehicle. By default use mavlink (with default mavlink configurations)
         # [Can be None as well, if we do not desired to use PX4 with this simulated vehicle]. It can also be a ROS2 backend
@@ -116,6 +116,7 @@ class VTOL(Vehicle):
         # Call the update method for the sensor to update its values internally (if applicable)
         for sensor in self._sensors:
             sensor_data = sensor.update(self._state, dt)
+            print("sensor.sensor_type= ", sensor.sensor_type)
 
             # If some data was updated and we have a mavlink backend or ros backend (or other), then just update it
             if sensor_data is not None:
@@ -173,9 +174,9 @@ class VTOL(Vehicle):
         
         forces, _, roll_moment, pitch_moment, yaw_moment = self._thrusters.update(self._state, dt)
         # print("force z = ", forces)
-        print("yaw_moment = ", yaw_moment)
-        print("roll_moment = ", roll_moment)
-        print("pitch_moment = ", pitch_moment)
+        # print("yaw_moment = ", yaw_moment)
+        # print("roll_moment = ", roll_moment)
+        # print("pitch_moment = ", pitch_moment)
 
         # Apply force to each rotor
         for i in range(4):
@@ -201,7 +202,7 @@ class VTOL(Vehicle):
         drag = self._drag.update(self._state, dt)
         lift = self._lift.update(self._state, dt)
 
-        print("lift = ", lift)
+        # print("lift = ", lift)
 
         self.apply_force(drag, body_part="/body")
         self.apply_force(lift, body_part="/body")
@@ -276,8 +277,8 @@ class VTOL(Vehicle):
         Returns:
             list: A list of angular velocities [rad/s] to apply in reach rotor to accomplish suchs forces and torques
         """
-        print("force = ", force)
-        print("torque = ", torque)
+        # print("force = ", force)
+        # print("torque = ", torque)
         # Get the body frame of the vehicle
         rb = self._world.dc_interface.get_rigid_body(self._stage_prefix + "/body")
 
