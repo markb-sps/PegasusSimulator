@@ -34,9 +34,11 @@ class VtolActuations(ThrustCurve):
         self._num_surfaces = config.get("num_surfaces", 4)
 
         # The rotor constant used for computing the total thrust produced by the rotor: T = rotor_constant * omega^2
-        kt = 8.54858e-6 * 4000
-        km = 1e-6 * 4000
-        self._rotor_constant = config.get("rotor_constant", [kt, kt, kt, kt, kt])
+        # kt = 8.54858e-6 * 4000
+        # km = 1e-6 * 4000
+        kt = 1.5*2e-5
+        km = 0.06*kt
+        self._rotor_constant = config.get("rotor_constant", [kt, kt, kt, kt, 8.54858e-06])
         assert len(self._rotor_constant) == self._num_rotors
 
         # The rotor constant used for computing the total torque generated about the vehicle Z-axis
@@ -68,7 +70,7 @@ class VtolActuations(ThrustCurve):
 
         self._rudder_coef = 0.00001
         self._aileron_coef = 0.001
-        self._elevator_coef = 0.001
+        self._elevator_coef = 0.0000001
 
     def set_input_reference(self, input_reference):
         """
@@ -110,16 +112,27 @@ class VtolActuations(ThrustCurve):
             self._force[i] = self._rotor_constant[i] * np.power(self._velocity[i], 2)
 
             # Compute the rolling moment coefficient
-            yaw_moment += self._yaw_moment_coefficient[i] * np.power(self._velocity[i], 2.0) * self._rot_dir[i]
+            if(i != 4):
+                yaw_moment += self._yaw_moment_coefficient[i] * np.power(self._velocity[i], 2.0) * self._rot_dir[i]
         
         # Update the rolling moment variable
         self._yaw_moment = yaw_moment
 
-        body_vel = state.get_linear_body_velocity_ned_frd()
+        body_vel = state.linear_body_velocity
         # self._yaw_moment += self._rudder_coef * self._input_reference[8] * body_vel[0]**2
         
-        self._roll_moment = self._aileron_coef * self._input_reference[5] * body_vel[0]**2
-        self._pitch_moment = self._elevator_coef * self._input_reference[7] * body_vel[0]**2
+        self._roll_moment = self._aileron_coef * self._input_reference[5] * (body_vel[0]**2+body_vel[1]**2)
+        self._pitch_moment = self._elevator_coef * self._input_reference[7] * (body_vel[0]**2+body_vel[1]**2)
+        # with open('/home/honda/Documents/pitch_moment.txt', 'r') as f:
+        #     content = f.read()
+        # self._pitch_moment = float(content)
+
+        # print(f"self._input_reference   {self._input_reference}")
+        # print(f"self._force             {self._force}")
+        # print(f"self._velocity          {self._velocity}")
+        # print(f"self._roll_moment       {self._roll_moment}")
+        # print(f"self._pitch_moment      {self._pitch_moment}")
+        # print(f"self._yaw_moment        {self._yaw_moment}")
 
         # Return the forces and velocities on each rotor and total torque applied on the body frame
         return self._force, self._velocity, self._roll_moment, self._pitch_moment, self._yaw_moment

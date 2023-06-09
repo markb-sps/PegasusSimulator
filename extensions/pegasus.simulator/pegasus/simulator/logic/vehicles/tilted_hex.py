@@ -173,10 +173,12 @@ class TiltedHex(Vehicle):
         # print("yaw_moment = ", yaw_moment)
 
         # Apply force to each rotor
+        rotor_shift = [0, 1, 4, 5, 2, 3]
         for i in range(6):
-
             # Apply the force in Z on the rotor frame
+            print(f"control {i} = {forces[i]}")
             self.apply_force([0.0, 0.0, forces[i]], body_part="/rotor" + str(i))
+            # self.apply_force([0.0, 0.0, 3], body_part="/rotor" + str(rotor_shift[i]))
 
             # Generate the rotating propeller visual effect
             self.handle_propeller_visual(i, forces[i], articulation)

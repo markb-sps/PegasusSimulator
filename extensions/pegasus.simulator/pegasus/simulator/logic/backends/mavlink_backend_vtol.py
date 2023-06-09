@@ -725,7 +725,7 @@ class MavlinkBackendVTOL(Backend):
             self._sensor_data.new_press_data = False
 
         try:
-            print("fields_updated",format(fields_updated, "b"))
+            # print("fields_updated",format(fields_updated, "b"))
             # print("abs press = ", self._sensor_data.abs_pressure)
             # self._sensor_data.diff_pressure = self._sensor_data.sim_true_airspeed
 

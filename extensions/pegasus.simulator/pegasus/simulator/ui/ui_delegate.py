@@ -81,6 +81,7 @@ class UIDelegate:
         self._px4_airframe_field: ui.AbstractValueModel = None
         # self._px4_airframe: str = 'iris'
         self._px4_airframe: str = 'standard_vtol'
+        # self._px4_airframe: str = 'typhoon_h480'
         self._vehicle_type = 0
 
     def set_window_bind(self, window):
@@ -137,7 +138,7 @@ class UIDelegate:
             self._px4_airframe = "iris"
             self._vehicle_type = 1
         elif(self._vehicle_dropdown.get_item_value_model().as_int == 3):
-            self._px4_airframe = "hexa_x_tilt"
+            self._px4_airframe = "typhoon_h480"
             # self._px4_airframe = "iris"
             self._vehicle_type = 2
             self._px4_dir = "/home/honda/workspace/aerial_manipulation_ws/src/Firmware"

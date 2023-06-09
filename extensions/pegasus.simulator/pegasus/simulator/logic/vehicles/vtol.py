@@ -39,8 +39,8 @@ class VTOLConfig:
         # The default thrust curve for a quadrotor and dynamics relating to drag
         self.actuations = VtolActuations()
 
-        self.drag = LinearDrag([0.50, 0.30, 0.0])
-        self.lift = Lift(1.5)
+        self.drag = LinearDrag([1.50, 0.30, 0.0])
+        self.lift = Lift(1.2)
 
         # The default sensors for a quadrotor
         self.sensors = [Barometer(), IMU(), Magnetometer(), GPS(), Airspeed()]
@@ -116,7 +116,6 @@ class VTOL(Vehicle):
         # Call the update method for the sensor to update its values internally (if applicable)
         for sensor in self._sensors:
             sensor_data = sensor.update(self._state, dt)
-            print("sensor.sensor_type= ", sensor.sensor_type)
 
             # If some data was updated and we have a mavlink backend or ros backend (or other), then just update it
             if sensor_data is not None:
@@ -195,15 +194,33 @@ class VTOL(Vehicle):
         self.handle_surface_visual(7, self._thrusters._input_reference[7], articulation)
         self.handle_surface_visual(8, self._thrusters._input_reference[8], articulation)
         # Apply the torque to the body frame of the vehicle that corresponds to the rolling moment
-        self.apply_torque([roll_moment, pitch_moment, yaw_moment], "/body")
-        # self.apply_torque([0.0, 0.0, yaw_moment], "/body")
+        # self.apply_torque([roll_moment, pitch_moment, yaw_moment], "/body")
+        # self.apply_torque([roll_moment, pitch_moment, 0], "/body")
+        # self.apply_torque([0, pitch_moment, yaw_moment], "/body")
+        # self.apply_torque([0, 0, 0], "/body")
+        self.apply_torque([0.0, 0.0, yaw_moment], "/body")
 
         # Compute the total linear drag force to apply to the vehicle's body frame
         drag = self._drag.update(self._state, dt)
         lift = self._lift.update(self._state, dt)
 
         # print("lift = ", lift)
+        # print("drag = ", drag)
+        # print(f"roll_moment:{roll_moment}:roll_moment",end='')
+        # print(f"pitch_moment:{pitch_moment}:pitch_moment",end='')
+        # print(f"yaw_moment:{yaw_moment}:yaw_moment",end='')
+        # print(f"aileron_actuation:{self._thrusters._input_reference[5]}:aileron_actuation",end='')
+        # print(f"elevator_actuation:{self._thrusters._input_reference[7]}:elevator_actuation",end='')
+        # print(f"rudder_actuation:{self._thrusters._input_reference[8]}:rudder_actuation",end='')
+        print(f"airspeed:{self._state.linear_body_velocity[0]}:airspeed",end='')
 
+        print(f"drag:{drag[0]}:drag",end='')
+        print(f"lift:{lift[2]}:lift",end='')
+        print(f"pusher:{forces[4]}:pusher",end='')
+        # print(f"yaw_moment:{yaw_moment}:yaw_moment",end='')
+        print(f"altitude:{self._state.position[2]}:altitude",end='')
+        print()
+        lift[2] *= 1.1
         self.apply_force(drag, body_part="/body")
         self.apply_force(lift, body_part="/body")
 
@@ -226,16 +243,20 @@ class VTOL(Vehicle):
         joint = self._world.dc_interface.find_articulation_dof(articulation, "joint" + str(rotor_number))
 
         # Spinning when armed but not applying force
-        if 0.0 < force < 0.1:
-            if(rotor_number == 4):
-                self._world.dc_interface.set_dof_velocity(joint, 0 * self._thrusters.rot_dir[rotor_number])
-            else:
-                self._world.dc_interface.set_dof_velocity(joint, 5 * self._thrusters.rot_dir[rotor_number])
-        # Spinning when armed and applying force
-        elif 0.1 <= force:
-            self._world.dc_interface.set_dof_velocity(joint, 100 * self._thrusters.rot_dir[rotor_number])
-        # Not spinning
+        
+        # if(rotor_number == 4):
+        if 0.0 < force < 2:
+            self._world.dc_interface.set_dof_velocity(joint, 0 * self._thrusters.rot_dir[rotor_number])
         else:
+            self._world.dc_interface.set_dof_velocity(joint, 100 * self._thrusters.rot_dir[rotor_number])
+        # else:
+        #     if 0.0 < force < 0.1:
+        #         self._world.dc_interface.set_dof_velocity(joint, 5 * self._thrusters.rot_dir[rotor_number])
+        #     else:
+        #         self._world.dc_interface.set_dof_velocity(joint, 100 * self._thrusters.rot_dir[rotor_number])
+            
+        # Not spinning
+        if(force == 0):
             self._world.dc_interface.set_dof_velocity(joint, 0)
     
     def handle_surface_visual(self, joint_number, force: float, articulation):

@@ -39,7 +39,7 @@ class PX4LaunchTool:
         # self.rc_script = self.px4_dir + "/ROMFS/px4fmu_common/init.d-posix/rcS"
 
         # Create a temporary filesystem for px4 to write data to/from (and modify the origin rcS files)
-        self.root_fs = tempfile.TemporaryDirectory()
+        self.root_fs = self.px4_dir + "/log_file_isaac/"
 
         # Set the environement variables that let PX4 know which vehicle model to use internally
         self.environment = os.environ
@@ -56,7 +56,7 @@ class PX4LaunchTool:
                 "-i " +
                 str(self.vehicle_id) +
                 "-d")
-        print("root_fs = ", self.root_fs.name)
+        print("root_fs = ", self.root_fs)
         print("env = ", self.environment)
         self.px4_process = subprocess.Popen(
             [
@@ -68,7 +68,7 @@ class PX4LaunchTool:
                 str(self.vehicle_id),
                 "-d",
             ],
-            cwd=self.root_fs.name,
+            cwd=self.root_fs,
             shell=False,
             env=self.environment,
         )
@@ -92,7 +92,7 @@ class PX4LaunchTool:
             self.kill_px4()
 
         # Make sure we clean the temporary filesystem used for the simulation
-        self.root_fs.cleanup()
+        # self.root_fs.cleanup()
 
 
 # ---- Code used for debugging the px4 tool ----
