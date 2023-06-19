@@ -36,9 +36,10 @@ class VtolActuations(ThrustCurve):
         # The rotor constant used for computing the total thrust produced by the rotor: T = rotor_constant * omega^2
         # kt = 8.54858e-6 * 4000
         # km = 1e-6 * 4000
-        kt = 1.5*2e-5
-        km = 0.06*kt
-        self._rotor_constant = config.get("rotor_constant", [kt, kt, kt, kt, 8.54858e-06])
+        kt = 2e-05 * 7/5 * 7/5
+        kt_p = 8.54858e-06 * 7/5 * 7/5
+        km = 1e-06
+        self._rotor_constant = config.get("rotor_constant", [kt, kt, kt, kt, kt_p])
         assert len(self._rotor_constant) == self._num_rotors
 
         # The rotor constant used for computing the total torque generated about the vehicle Z-axis
@@ -63,7 +64,7 @@ class VtolActuations(ThrustCurve):
         self._velocity = [0.0 for i in range(self._num_rotors)]
 
         # The actual force that each rotor is generating
-        self._force = [0.0 for i in range(self._num_rotors)]
+        self._force = [0.0 for i in range(self._num_rotors+self._num_surfaces)]
 
         # The actual rolling moment that is generated on the body frame of the vehicle
         self._yaw_moment = 0.0
@@ -119,10 +120,27 @@ class VtolActuations(ThrustCurve):
         self._yaw_moment = yaw_moment
 
         body_vel = state.linear_body_velocity
-        # self._yaw_moment += self._rudder_coef * self._input_reference[8] * body_vel[0]**2
+        # self._yaw_moment += self._rudder_coef * (self._input_reference[8]-100) * body_vel[0]**2
+        with open('/home/honda/Documents/aileron_coef.txt', 'r') as f:
+            content = f.read()
+        self._aileron_coef = float(content)
+        # with open('/home/honda/Documents/pusher_const.txt', 'r') as f:
+        #     content = f.read()
+        # self._rotor_constant[4] = float(content)
+        with open('/home/honda/Documents/elev_coef.txt', 'r') as f:
+            content = f.read()
+        self._elevator_coef = float(content)
+        with open('/home/honda/Documents/rudd_coef.txt', 'r') as f:
+            content = f.read()
+        self._rudder_coef = float(content)
         
-        self._roll_moment = self._aileron_coef * self._input_reference[5] * (body_vel[0]**2+body_vel[1]**2)
-        self._pitch_moment = self._elevator_coef * self._input_reference[7] * (body_vel[0]**2+body_vel[1]**2)
+        self._roll_moment = self._aileron_coef * (self._input_reference[5]-100) * (body_vel[0]**2)
+        self._pitch_moment = self._elevator_coef * (self._input_reference[7]-100) * (body_vel[0]**2)
+
+        self.force[5] = self._aileron_coef * (self._input_reference[5]-100) * (body_vel[0]**2)
+        self.force[6] = self._aileron_coef * (self._input_reference[6]-100) * (body_vel[0]**2)
+        self.force[7] = self._elevator_coef * (self._input_reference[7]-100) * (body_vel[0]**2)
+
         # with open('/home/honda/Documents/pitch_moment.txt', 'r') as f:
         #     content = f.read()
         # self._pitch_moment = float(content)

@@ -7,6 +7,8 @@
 import numpy as np
 from pegasus.simulator.logic.dynamics.aerodynamics import Aerodynamics
 from pegasus.simulator.logic.state import State
+from scipy.io import loadmat
+from scipy.interpolate import interp1d
 
 class LinearDrag(Aerodynamics):
     """
@@ -30,7 +32,7 @@ class LinearDrag(Aerodynamics):
         # self._drag_coefficients = np.diag(drag_coefficients)
         self._drag_coefficients = (drag_coefficients)
         self._air_density = 1.293
-        self._reference_area = 1 / 7
+        self._reference_area = self._wind_surface / 10
         # The drag force to apply on the vehicle's body frame
         self._drag_force = np.array([0.0, 0.0, 0.0])
 
@@ -43,8 +45,23 @@ class LinearDrag(Aerodynamics):
             frame, expressed in Newton (N) [dx, dy, dz]
         """
         return self._drag_force
+    
+    def get_cd(self, alpha):
+        data = loadmat('/home/honda/mohammad/C_d.mat')  # Load .mat file
+        cd_data = data['C_d'].ravel()  # Assuming 'C_l' is a 1D array in the .mat file
 
-    def update(self, state: State, dt: float):
+        alpha_points = np.concatenate([np.arange(-8.5, 14, 0.25), [14.5, 14.75, 15]])
+
+    
+        # Create an interpolation function based on the input data
+        f = interp1d(alpha_points, cd_data, kind='nearest', fill_value='extrapolate')
+
+        # Use the function to interpolate the input alpha
+        cd = f(alpha)
+
+        return cd
+
+    def update(self, state: State, pitch, dt: float):
         """Method that updates the drag force to be applied on the body frame of the vehicle. The total drag force
         applied on the body reference frame (FLU convention) is given by diag(dx,dy,dz) * R' * v
         where v is the velocity of the vehicle expressed in the inertial frame and R' * v = velocity_body_frame
@@ -59,13 +76,20 @@ class LinearDrag(Aerodynamics):
 
         # Get the velocity of the vehicle expressed in the body frame of reference
         body_vel = state.linear_body_velocity
+        
+        with open('/home/honda/Documents/wind_surface.txt', 'r') as f:
+            content = f.read()
+        self._wind_surface = float(content)
+        self._reference_area = 1.012642281 # from Omega_trim = 60% = 663.94 and V_trim = 15 m/s^2
+        # self._drag_coefficients[0] = self.get_cd(pitch)
 
-        drag = self._drag_coefficients[0] * self._air_density * self._reference_area *(body_vel[0]**2+body_vel[1]**2) / 2
+        drag = self._drag_coefficients[0] * self._air_density * self._reference_area *(body_vel[0]**2) / 2
         # print("self._drag_coefficients[0] = ", self._drag_coefficients[0])
         # print("self._air_density = ", self._air_density)
         # print(" = ", drag)
         # print(" = ", drag)
         # Compute the component of the drag force to be applied in the body frame
-        # self._drag_force = [-1*drag, 0, 0]
-        self._drag_force[0] = -drag
+        self._drag_force = [-1*drag, 0, 0]
+        # self._drag_force[0] = -drag
+        # self._drag_force = -np.dot(self._drag_coefficients, np.multiply(np.square(body_vel), np.sign(body_vel)))
         return self._drag_force

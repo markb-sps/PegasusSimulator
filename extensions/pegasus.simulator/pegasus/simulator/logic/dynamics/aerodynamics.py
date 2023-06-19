@@ -6,6 +6,7 @@
 """
 from pegasus.simulator.logic.state import State
 
+
 class Aerodynamics:
     """
     Class that serves as a template for the implementation of Drag forces that actuate on a rigid body
@@ -15,6 +16,7 @@ class Aerodynamics:
         """
         Receives as input the drag coefficients of the vehicle as a 3x1 vector of constants
         """
+        self._wind_surface = 0.280914325 * 2# from V_trim = 15 m/s^2
 
     @property
     def force(self):

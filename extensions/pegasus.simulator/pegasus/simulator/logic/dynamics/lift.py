@@ -7,13 +7,15 @@
 import numpy as np
 from pegasus.simulator.logic.dynamics.aerodynamics import Aerodynamics
 from pegasus.simulator.logic.state import State
+from scipy.io import loadmat
+from scipy.interpolate import interp1d
 
 class Lift(Aerodynamics):
     """
     Class that implements linear lift computations affecting a rigid body. It inherits the Lift base class.
     """
 
-    def __init__(self, lift_coefficients=[4.75]):
+    def __init__(self, lift_coefficients=[1.2]):
         """
         Receives as input the lift coefficients of the vehicle as a 3x1 vector of constants
 
@@ -30,7 +32,7 @@ class Lift(Aerodynamics):
         self._lift_coefficients = (lift_coefficients)
         self._air_density = 1.293
         # self._wind_surface = 32/4 *1.2 * 0.92
-        self._wind_surface = 1
+        
         # self._wind_surface = 1.403569076
 
         # The lift force to apply on the vehicle's body frame
@@ -46,7 +48,22 @@ class Lift(Aerodynamics):
         """
         return self._lift_force
 
-    def update(self, state: State, dt: float):
+    def get_cl(self, alpha):
+        data = loadmat('/home/honda/mohammad/C_l.mat')  # Load .mat file
+        cl_data = data['C_l'].ravel()  # Assuming 'C_l' is a 1D array in the .mat file
+
+        alpha_points = np.concatenate([np.arange(-8.5, 14, 0.25), [14.5, 14.75, 15]])
+
+    
+        # Create an interpolation function based on the input data
+        f = interp1d(alpha_points, cl_data, kind='nearest', fill_value='extrapolate')
+
+        # Use the function to interpolate the input alpha
+        cl = f(alpha)
+
+        return cl
+    
+    def update(self, state: State, pitch, dt: float):
         """Method that updates the lift force to be applied on the body frame of the vehicle. The total lift force
         applied on the body reference frame (FLU convention) is given by diag(lx,ly,lz) * R' * v
         where v is the velocity of the vehicle expressed in the inertial frame and R' * v = velocity_body_frame
@@ -60,9 +77,14 @@ class Lift(Aerodynamics):
         """
 
         # Get the velocity of the vehicle expressed in the body frame of reference
+        with open('/home/honda/Documents/wind_surface.txt', 'r') as f:
+            content = f.read()
+        self._wind_surface = float(content)
+        # self._lift_coefficients = self.get_cl(pitch)
+
         body_vel = state.linear_body_velocity
 
-        lift = self._lift_coefficients * self._air_density * self._wind_surface * (body_vel[0]**2+body_vel[1]**2) / 2
+        lift = self._lift_coefficients * self._air_density * self._wind_surface * (body_vel[0]**2) / 2
         # lift = 0
         # if (body_vel[0] > 6):
             # lift = 5 * 9.8

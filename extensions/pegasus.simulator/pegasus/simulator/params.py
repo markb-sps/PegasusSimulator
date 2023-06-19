@@ -26,6 +26,7 @@ CONFIG_FILE = ROOT + "/pegasus.simulator/config/configs.yaml"
 # Define the Extension Assets Path
 ASSET_PATH = ROOT + "/pegasus.simulator/pegasus/simulator/assets"
 ROBOTS_ASSETS = ASSET_PATH + "/Robots"
+WORLD_ASSETS = ASSET_PATH + "/Worlds"
 
 # Define the built in robots of the extension
 ROBOTS = {"Passenger Vtol": ROBOTS_ASSETS + "/Passenger_vtol/passenger_vtol_final.usd",
@@ -57,8 +58,16 @@ OMNIVERSE_ENVIRONMENTS = {
     "Exhibition Hall": "omniverse://localhost/NVIDIA/Assets/Scenes/Templates/Interior/ZetCG_ExhibitionHall.usd"
 }
 
+
+
 SIMULATION_ENVIRONMENTS = {}
 
+# LOCAL_SIMULATION_ENVIRONMENTS = {
+#     'VTOL Cube': WORLD_ASSETS + "/Lisbon.usd",  # Update this with the path to your .usd file
+#     # Add more local environments here if needed
+# }
+# for asset in LOCAL_SIMULATION_ENVIRONMENTS:
+#     SIMULATION_ENVIRONMENTS[asset] = LOCAL_SIMULATION_ENVIRONMENTS[asset]
 # Add the Isaac Sim assets to the list
 for asset in NVIDIA_SIMULATION_ENVIRONMENTS:
     SIMULATION_ENVIRONMENTS[asset] = (
