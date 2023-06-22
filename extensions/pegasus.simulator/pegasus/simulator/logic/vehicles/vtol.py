@@ -23,9 +23,6 @@ import subprocess
 import json
 from scipy.spatial.transform import Rotation as R
 
-from pegasus.simulator.logic.vehicles.utils.usb_drivers import ThrottleState, StickState, PedalsState
-import pegasus.simulator.logic.vehicles.utils.quadrotor_dynamics as quadrotor_dynamics
-
 class VTOLConfig:
     """
     A data class that is used for configuring a VTOL
@@ -112,12 +109,6 @@ class VTOL(Vehicle):
         # Add a callbacks for the
         self._world.add_physics_callback(self._stage_prefix + "/mav_state", self.update_sim_state)
 
-
-        self.throttle = ThrottleState()
-        self.stick = StickState()
-        self.pedals = PedalsState()
-        self.quad = quadrotor_dynamics.quad(0.1, 1e100)
-
     def update_sensors(self, dt: float):
         """Callback that is called at every physics steps and will call the sensor.update method to generate new
         sensor data. For each data that the sensor generates, the backend.update_sensor method will also be called for
@@ -166,65 +157,6 @@ class VTOL(Vehicle):
         self.plotter.terminate()
         self.plotter.wait()
 
-    def joystick_input_reference(self):
-
-        """
-
-        WITH PX4 Backend:::
-
-            init: all zero.
-
-            reinit: all 100. except rudder=-900.
-
-            hover: 560.x4, rest as above
-
-            transition: 
-                quadrotors still around 560., at some point the first goes to 100, others drop too?
-                pusher ramps up to 851., 
-                al drops to 75, then 106, then 85....... drops below -800
-                ar jumps and then goes above 1000 (al & ar have little correlation...)
-                elevator: 78, 78, -34, 31, .... 108 ... up to 754, down to -900
-
-        input_reference=[
-        r1
-        r2
-        r3
-        r4
-        pusher
-        al
-        ar
-        elevator
-        rudder
-        ]
-        """
-        input_reference = [0.0 for i in range(9)]
-
-        thrust = self.throttle.left * 0.5
-        moments = np.array([
-            [0.0 if abs(self.stick.x) < 0.1 else min(self.stick.x, 0.9)*0.005],
-            [0.0 if abs(self.stick.y) < 0.1 else min(self.stick.y, 0.9)*0.005],
-            [0.0 if abs(self.stick.z) < 0.1 else min(self.stick.z, 0.9)*0.005]
-        ])
-        u, w, F_new, M_new = self.quad.f2w(thrust, moments)
-
-        w_mul = 6.
-
-        input_reference = [
-            0,#w[0] * w_mul,
-            0,#w[1] * w_mul,
-            0,#w[2] * w_mul,
-            0,#w[3] * w_mul,
-            self.throttle.right* 5000,
-            self.stick.x*100,
-            -self.stick.x*100,
-            self.stick.y*100,
-            self.stick.z
-        ]
-
-
-
-        return input_reference
-
     def update(self, dt: float):
         """
         Method that computes and applies the forces to the vehicle in simulation based on the motor speed. 
@@ -238,47 +170,22 @@ class VTOL(Vehicle):
         # Get the articulation root of the vehicle
         articulation = self._world.dc_interface.get_articulation(self._stage_prefix)
         # Get the desired angular velocities for each rotor from the first backend (can be mavlink or other) expressed in rad/s
-        # if len(self._backends) != 0:
-        #     desired_rotor_velocities = self._backends[0].input_reference()
-        # else:
-        #     desired_rotor_velocities = [0.0 for i in range(self._thrusters._num_rotors)]
-
-        desired_rotor_velocities = self.joystick_input_reference()
-
-        print(desired_rotor_velocities)
-
-        """
-        input_reference=[
-        r1
-        r2
-        r3
-        r4
-        pusher
-        al
-        ar
-        elevator
-        rudder
-        ]
-        """
+        if len(self._backends) != 0:
+            desired_rotor_velocities = self._backends[0].input_reference()
+        else:
+            desired_rotor_velocities = [0.0 for i in range(self._thrusters._num_rotors)]
 
         # print("desired_rotor_vel = ", len(desired_rotor_velocities))
         # Input the desired rotor velocities in the thruster model
         self._thrusters.set_input_reference(desired_rotor_velocities)
 
         # Get the desired forces to apply to the vehicle
-
-
         
         forces, _, roll_moment, pitch_moment, yaw_moment = self._thrusters.update(self._state, dt)
         # print("force z = ", forces)
         # print("yaw_moment = ", yaw_moment)
         # print("roll_moment = ", roll_moment)
         # print("pitch_moment = ", pitch_moment)
-
-
-        self.stick.refresh()
-        self.throttle.refresh()
-
 
         # Apply force to each rotor
         for i in range(4):
@@ -318,28 +225,26 @@ class VTOL(Vehicle):
         
 
         plots_data = [
-            # {"label": "Drag X",       "value": drag[0]},
+            {"label": "Drag X",       "value": drag[0]},
             # {"label": "Drag Y",       "value": drag[1]},
             # {"label": "Drag Z",       "value": drag[2]},
-            # {"label": "Pitch",       "value": euler_angles[1]},
+            {"label": "Pitch",       "value": euler_angles[1]},
             {"label": "Lift",       "value": lift[2]},
             {"label": "Airspeed",   "value": self._state.linear_body_velocity[0]},
             {"label": "Pusher",   "value": self._thrusters.force[4]},
-            # {"label": "Pusher Command",   "value": self._thrusters._input_reference[4]},
-            # {"label": "Altitude",   "value": self._state.position[2]},
+            {"label": "Pusher Command",   "value": self._thrusters._input_reference[4]},
+            {"label": "Altitude",   "value": self._state.position[2]},
             {"label": "Pitch Force",   "value": forces[7]},
             {"label": "Elevator Command",   "value": self._thrusters._input_reference[7]},
             {"label": "Roll Force Left",   "value": forces[5]},
             {"label": "Aileron Left Command",   "value": self._thrusters._input_reference[5]},
-            {"label": "Yaw Moment",   "value": yaw_moment},
-            {"label": "Rudder Command",   "value": self._thrusters._input_reference[8]},
             # {"label": "Roll Force Right",   "value": forces[6]},
             # {"label": "Aileron Right Command",   "value": self._thrusters._input_reference[6]},
             
-            # {"label": "MC Rotor 1",   "value": self._thrusters.force[0]},
-            # {"label": "MC Rotor 2",   "value": self._thrusters.force[1]},
-            # {"label": "MC Rotor 3",   "value": self._thrusters.force[2]},
-            # {"label": "MC Rotor 4",   "value": self._thrusters._input_reference[3]},
+            {"label": "MC Rotor 1",   "value": self._thrusters.force[0]},
+            {"label": "MC Rotor 2",   "value": self._thrusters.force[1]},
+            {"label": "MC Rotor 3",   "value": self._thrusters.force[2]},
+            {"label": "MC Rotor 4",   "value": self._thrusters._input_reference[3]},
         ]
 
         # Send each plot data to the qt plot script

@@ -124,9 +124,9 @@ class VtolActuations(ThrustCurve):
         with open('/home/honda/Documents/aileron_coef.txt', 'r') as f:
             content = f.read()
         self._aileron_coef = float(content)
-        with open('/home/honda/Documents/pusher_const.txt', 'r') as f:
-            content = f.read()
-        self._rotor_constant[4] = float(content)
+        # with open('/home/honda/Documents/pusher_const.txt', 'r') as f:
+        #     content = f.read()
+        # self._rotor_constant[4] = float(content)
         with open('/home/honda/Documents/elev_coef.txt', 'r') as f:
             content = f.read()
         self._elevator_coef = float(content)
