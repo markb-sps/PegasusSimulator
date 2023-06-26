@@ -6,6 +6,7 @@
 """
 
 import numpy as np
+import omni.isaac.core 
 
 # The vehicle interface
 from pegasus.simulator.logic.vehicles.vehicle import Vehicle
@@ -42,7 +43,7 @@ class VTOLConfig:
         # The default thrust curve for a quadrotor and dynamics relating to drag
         self.actuations = VtolActuations()
 
-        self.drag = LinearDrag([0.08, 0.0, 0.0])
+        self.drag = LinearDrag([0.05, 0.0, 0.0])
         self.lift = Lift(1.2)
         
 
@@ -186,32 +187,35 @@ class VTOL(Vehicle):
         # print("yaw_moment = ", yaw_moment)
         # print("roll_moment = ", roll_moment)
         # print("pitch_moment = ", pitch_moment)
-
+        aspd_th = 150000
         # Apply force to each rotor
         for i in range(4):
-
+            if(self.state.airspeed > 15):
+                forces[i] = 0
             # Apply the force in Z on the rotor frame
             self.apply_force([0.0, 0.0, forces[i]], body_part="/rotor" + str(i))
 
             # Generate the rotating propeller visual effect
             self.handle_propeller_visual(i, forces[i], articulation)
 
-        
+        if(self.state.airspeed > aspd_th):
+            forces[4] = 0
         self.apply_force([forces[4], 0.0, 0.0], body_part="/body")
-        self.apply_force([0.0, 0.0, forces[5]], body_part="/a_l")
-        self.apply_force([0.0, 0.0, forces[6]], body_part="/a_r")
-        self.apply_force([0.0, 0.0, forces[7]], body_part="/elevator")
+        
+        # self.apply_force([0.0, 0.0, forces[5]], body_part="/a_l")
+        # self.apply_force([0.0, 0.0, forces[6]], body_part="/a_r")
+        # self.apply_force([0.0, 0.0, forces[7]], pos=[0, -1, 0], body_part="/body")
+
         self.handle_propeller_visual(4, forces[4], articulation)
-        self.handle_surface_visual(5, self._thrusters._input_reference[5], articulation)
-        self.handle_surface_visual(6, -self._thrusters._input_reference[6], articulation)
-        self.handle_surface_visual(7, self._thrusters._input_reference[7], articulation)
-        self.handle_surface_visual(8, self._thrusters._input_reference[8], articulation)
+        # self.handle_surface_visual(5, self._thrusters._input_reference[5], articulation)
+        # self.handle_surface_visual(6, -self._thrusters._input_reference[6], articulation)
+        # self.handle_surface_visual(7, self._thrusters._input_reference[7], articulation)
+        # self.handle_surface_visual(8, self._thrusters._input_reference[8], articulation)
         # Apply the torque to the body frame of the vehicle that corresponds to the rolling moment
-        # self.apply_torque([roll_moment, pitch_moment, yaw_moment], "/body")
-        # self.apply_torque([roll_moment, pitch_moment, 0], "/body")
-        # self.apply_torque([0, pitch_moment, yaw_moment], "/body")
-        # self.apply_torque([0, 0, 0], "/body")
-        self.apply_torque([0.0, 0.0, yaw_moment], "/body")
+        
+        # self.apply_torque([0.0, 0.0, yaw_moment], "/body")
+        self.apply_torque([roll_moment, pitch_moment, yaw_moment], "/body")
+        # self.apply_torque([0.0, pitch_moment, 0.0], "/body")
 
 
         rot = R.from_quat(self._state.attitude)
@@ -222,22 +226,36 @@ class VTOL(Vehicle):
         drag = self._drag.update(self._state, euler_angles[1]+8, dt)
         lift = self._lift.update(self._state, euler_angles[1]+8, dt)
 
-        
+        if(self.state.airspeed > aspd_th):
+            drag[0] = 0
 
+        print("lift = ", lift)
+        print("drag = ", drag)
+        print("pusher = ", forces[4])
+
+        # self.apply_force(drag, body_part="/body")
+        self.apply_force(lift, body_part="/body")
+
+    
         plots_data = [
             {"label": "Drag X",       "value": drag[0]},
             # {"label": "Drag Y",       "value": drag[1]},
             # {"label": "Drag Z",       "value": drag[2]},
+            {"label": "Roll",       "value": euler_angles[0]},
             {"label": "Pitch",       "value": euler_angles[1]},
+            {"label": "Yaw",       "value": euler_angles[2]},
             {"label": "Lift",       "value": lift[2]},
             {"label": "Airspeed",   "value": self._state.linear_body_velocity[0]},
             {"label": "Pusher",   "value": self._thrusters.force[4]},
             {"label": "Pusher Command",   "value": self._thrusters._input_reference[4]},
             {"label": "Altitude",   "value": self._state.position[2]},
-            {"label": "Pitch Force",   "value": forces[7]},
+            # {"label": "Pitch Force",   "value": forces[7]},
+            {"label": "Pitch moment",   "value": pitch_moment},
             {"label": "Elevator Command",   "value": self._thrusters._input_reference[7]},
-            {"label": "Roll Force Left",   "value": forces[5]},
+            # {"label": "Roll Force Left",   "value": forces[5]},
+            {"label": "Roll moment",   "value": roll_moment},
             {"label": "Aileron Left Command",   "value": self._thrusters._input_reference[5]},
+            
             # {"label": "Roll Force Right",   "value": forces[6]},
             # {"label": "Aileron Right Command",   "value": self._thrusters._input_reference[6]},
             
@@ -256,8 +274,7 @@ class VTOL(Vehicle):
             except BrokenPipeError:
                 print(BrokenPipeError)
 
-        self.apply_force(drag, body_part="/CoP")
-        self.apply_force(lift, body_part="/CoP")
+        
 
         # Call the update methods in all backends
         for backend in self._backends:
@@ -279,16 +296,16 @@ class VTOL(Vehicle):
 
         # Spinning when armed but not applying force
         
-        # if(rotor_number == 4):
-        if 0.0 < force < 1:
-            self._world.dc_interface.set_dof_velocity(joint, 0 * self._thrusters.rot_dir[rotor_number])
+        if(rotor_number == 4):
+            if 0.0 < force < 2:
+                self._world.dc_interface.set_dof_velocity(joint, 0 * self._thrusters.rot_dir[rotor_number])
+            else:
+                self._world.dc_interface.set_dof_velocity(joint, 10 * self._thrusters.rot_dir[rotor_number])
         else:
-            self._world.dc_interface.set_dof_velocity(joint, 10 * self._thrusters.rot_dir[rotor_number])
-        # else:
-        #     if 0.0 < force < 0.1:
-        #         self._world.dc_interface.set_dof_velocity(joint, 5 * self._thrusters.rot_dir[rotor_number])
-        #     else:
-        #         self._world.dc_interface.set_dof_velocity(joint, 100 * self._thrusters.rot_dir[rotor_number])
+            if 0.0 < force < 0.5:
+                self._world.dc_interface.set_dof_velocity(joint, 0.001 * self._thrusters.rot_dir[rotor_number])
+            else:
+                self._world.dc_interface.set_dof_velocity(joint, 10 * self._thrusters.rot_dir[rotor_number])
             
         # Not spinning
         if(force == 0):

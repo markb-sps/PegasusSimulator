@@ -244,6 +244,8 @@ class Vehicle(Robot):
         # The acceleration of the vehicle expressed in the inertial frame X_ddot = [x_ddot, y_ddot, z_ddot]
         self._state.linear_acceleration = linear_acceleration
 
+        self._state.airspeed = np.abs(self._state.linear_body_velocity[0])
+
     def start(self):
         """
         Method that should be implemented by the class that inherits the vehicle object.

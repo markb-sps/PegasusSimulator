@@ -709,20 +709,24 @@ class MavlinkBackendVTOL(Backend):
             fields_updated = fields_updated | SensorSource.MAG
             self._sensor_data.new_mag_data = False
 
+        if self._sensor_data.new_press_data and self._sensor_data.new_bar_data:
+
+            # v**2 = (P_diff - P_static) * 1.661
+            # https://www.vcalc.com/wiki/vCalc/Air+Speed
+            # if self._sensor_data.airspeed <=0:
+            #     self._sensor_data.diff_pressure = 
+            self._sensor_data.diff_pressure = ((self._sensor_data.airspeed*3/173)**2/1.661)*33.864
+
+            # Set the bit field to signal that we are sending updated diff pressure data
+            fields_updated = fields_updated | SensorSource.DIFF_PRESS
+            self._sensor_data.new_press_data = False
+
         if self._sensor_data.new_bar_data:
             # Set the bit field to signal that we are sending updated barometer data
             fields_updated = fields_updated | SensorSource.BARO
             self._sensor_data.new_bar_data = False
 
-        if self._sensor_data.new_press_data and self._sensor_data.new_bar_data:
-
-            # v**2 = (P_diff - P_static) * 1.661
-            # https://www.vcalc.com/wiki/vCalc/Air+Speed
-            self._sensor_data.diff_pressure = self._sensor_data.airspeed**2/1.661 + self._sensor_data.abs_pressure
-
-            # Set the bit field to signal that we are sending updated diff pressure data
-            fields_updated = fields_updated | SensorSource.DIFF_PRESS
-            self._sensor_data.new_press_data = False
+       
 
         try:
             # print("fields_updated",format(fields_updated, "b"))

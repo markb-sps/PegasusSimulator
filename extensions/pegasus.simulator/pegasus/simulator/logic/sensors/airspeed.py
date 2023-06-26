@@ -57,7 +57,7 @@ class Airspeed(Sensor):
         sigma_as_d = 1.0 / np.sqrt(dt) * self._airspeed_noise_density
 
         # Simulate airspeed noise processes and add them to the true airspeed.
-        airspeed = state.airspeed + sigma_as_d * np.random.randn() + self._airspeed_bias
+        airspeed = state.airspeed# + sigma_as_d * np.random.randn() + self._airspeed_bias
 
         # Add the airspeed value to the dictionary and return it
         self._state = {
