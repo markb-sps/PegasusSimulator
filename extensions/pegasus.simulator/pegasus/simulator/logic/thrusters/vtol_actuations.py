@@ -36,9 +36,12 @@ class VtolActuations(ThrustCurve):
         # The rotor constant used for computing the total thrust produced by the rotor: T = rotor_constant * omega^2
         # kt = 8.54858e-6 * 4000
         # km = 1e-6 * 4000
-        kt = 2e-05 * 7/5 * 7/5
-        kt_p = 8.54858e-06 
-        km = 1e-06 * 7/5 * 7/5
+        # kt = 2e-05 * 7/5 * 7/5
+        # kt_p = 8.54858e-06 
+        # km = 1e-06 * 7/5 * 7/5
+        kt = 2e-02 * 7/5 * 7/5
+        kt_p = 8.54858e-03
+        km = 1e-03 * 7/5 * 7/5
         self._rotor_constant = config.get("rotor_constant", [kt, kt, kt, kt, kt_p])
         assert len(self._rotor_constant) == self._num_rotors
 
@@ -127,9 +130,9 @@ class VtolActuations(ThrustCurve):
         with open('/home/honda/Documents/aileron_coef.txt', 'r') as f:
             content = f.read()
         self._aileron_coef = float(content)
-        with open('/home/honda/Documents/pusher_const.txt', 'r') as f:
-            content = f.read()
-        self._rotor_constant[4] = eval(content)
+        # with open('/home/honda/Documents/pusher_const.txt', 'r') as f:
+        #     content = f.read()
+        # self._rotor_constant[4] = eval(content)
         with open('/home/honda/Documents/elev_coef.txt', 'r') as f:
             content = f.read()
         self._elevator_coef = float(content)

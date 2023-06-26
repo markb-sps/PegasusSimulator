@@ -29,7 +29,9 @@ ROBOTS_ASSETS = ASSET_PATH + "/Robots"
 WORLD_ASSETS = ASSET_PATH + "/Worlds"
 
 # Define the built in robots of the extension
-ROBOTS = {"Passenger Vtol": ROBOTS_ASSETS + "/Passenger_vtol/passenger_vtol_final.usd",
+ROBOTS = {
+        #   "Passenger Vtol": ROBOTS_ASSETS + "/Passenger_vtol/passenger_vtol_small_scale.usd",
+          "Passenger Vtol": ROBOTS_ASSETS + "/Passenger_vtol/passenger_vtol_final.usd",
           "Iris": ROBOTS_ASSETS + "/Iris/iris.usd",
           "PX4 Vtol": ROBOTS_ASSETS + "/PX4_vtol/PX4_vtol.usd",
           "Tilted Hex": ROBOTS_ASSETS + "/Hexarotor/standard_hex.usd",} #, "Flying Cube": ROBOTS_ASSETS + "/iris_cube.usda"}

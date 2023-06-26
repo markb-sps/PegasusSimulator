@@ -84,7 +84,7 @@ class LinearDrag(Aerodynamics):
         self._reference_area = 0.176302695 # from Omega_trim = 25% = 276.64 and V_trim = 15 m/s^2
         # self._drag_coefficients[0] = self.get_cd(pitch)
 
-        drag = self._drag_coefficients[0] * self._air_density * self._reference_area *(body_vel[0]**2) / 2
+        drag = self._drag_coefficients[0] * self._air_density * self._wind_surface *(body_vel[0]**2) / 2
         # print("self._drag_coefficients[0] = ", self._drag_coefficients[0])
         # print("self._air_density = ", self._air_density)
         # print(" = ", drag)

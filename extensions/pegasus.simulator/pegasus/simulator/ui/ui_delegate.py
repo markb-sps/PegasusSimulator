@@ -172,7 +172,7 @@ class UIDelegate:
                     prim_path="/World/random_cube", # The prim path of the cube in the USD stage
                     name="fancy_cube", # The unique name used to retrieve the object from the scene later on
                     position=np.array([0, 0, -1]), # Using the current stage units which is in meters by default.
-                    scale=np.array([2, 2, 2]), # most arguments accept mainly numpy arrays.
+                    scale=np.array([10, 10, 10]), # most arguments accept mainly numpy arrays.
                 ))
 
             # After adding the cube to the world, disable its rigid body physics.
