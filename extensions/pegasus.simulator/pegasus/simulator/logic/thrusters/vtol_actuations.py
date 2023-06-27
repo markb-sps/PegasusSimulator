@@ -39,9 +39,9 @@ class VtolActuations(ThrustCurve):
         # kt = 2e-05 * 7/5 * 7/5
         # kt_p = 8.54858e-06 
         # km = 1e-06 * 7/5 * 7/5
-        kt = 2e-05 * 4150.37012 / 5
-        kt_p = 8.54858e-06 * 4150.37012 / 5
-        km = 1e-06 * 4150.37012 / 10
+        kt = 2e-05 * 4150.37012 / 5  * 7/5* 7/5
+        kt_p = 8.54858e-06 * 4150.37012 / 5 * 7/5* 7/5
+        km = 1e-06 * 4150.37012 / 5 * 7/5* 7/5
 
         self._rotor_constant = config.get("rotor_constant", [kt, kt, kt, kt, kt_p])
         assert len(self._rotor_constant) == self._num_rotors
