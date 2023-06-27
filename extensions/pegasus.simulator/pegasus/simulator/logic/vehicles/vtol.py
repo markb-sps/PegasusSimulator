@@ -217,11 +217,16 @@ class VTOL(Vehicle):
         self.apply_torque([roll_moment, pitch_moment, yaw_moment], "/body")
         # self.apply_torque([0.0, pitch_moment, 0.0], "/body")
 
+        q = self.state.attitude
+        rot = R.from_quat(q)
 
-        rot = R.from_quat(self._state.attitude)
 
         # Get the Euler angles (roll, pitch, yaw)
         euler_angles = rot.as_euler('xyz', degrees=True)
+
+        print("roll = ", euler_angles[0])
+        print("pitch = ", euler_angles[1])
+        print("yaw = ", euler_angles[2])
         # Compute the total linear drag force to apply to the vehicle's body frame
         drag = self._drag.update(self._state, euler_angles[1]+8, dt)
         lift = self._lift.update(self._state, euler_angles[1]+8, dt)
@@ -229,9 +234,9 @@ class VTOL(Vehicle):
         if(self.state.airspeed > aspd_th):
             drag[0] = 0
 
-        print("lift = ", lift)
-        print("drag = ", drag)
-        print("pusher = ", forces[4])
+        # print("lift = ", lift)
+        # print("drag = ", drag)
+        # print("pusher = ", forces[4])
 
         # self.apply_force(drag, body_part="/body")
         self.apply_force(lift, body_part="/body")

@@ -629,7 +629,7 @@ class MavlinkBackendVTOL(Backend):
         self.send_gps_msgs(self._current_utime)
         
         # Send Ground Truth
-        self.send_ground_truth(self._current_utime)
+        # self.send_ground_truth(self._current_utime)
 
         # Send the Airspeed messages
         # self.send_airspeed_msgs(self._current_utime)

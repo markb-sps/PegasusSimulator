@@ -166,17 +166,17 @@ class UIDelegate:
             # Try to spawn the selected world
             asyncio.ensure_future(self._pegasus_sim.load_environment_async(SIMULATION_ENVIRONMENTS[selected_world], force_clear=True))
             
-            world = self._pegasus_sim.world
-            fancy_cube = world.scene.add(
-                DynamicCuboid(
-                    prim_path="/World/random_cube", # The prim path of the cube in the USD stage
-                    name="fancy_cube", # The unique name used to retrieve the object from the scene later on
-                    position=np.array([0, 0, -1]), # Using the current stage units which is in meters by default.
-                    scale=np.array([10, 10, 10]), # most arguments accept mainly numpy arrays.
-                ))
+            # world = self._pegasus_sim.world
+            # fancy_cube = world.scene.add(
+            #     DynamicCuboid(
+            #         prim_path="/World/random_cube", # The prim path of the cube in the USD stage
+            #         name="fancy_cube", # The unique name used to retrieve the object from the scene later on
+            #         position=np.array([0, 0, -1]), # Using the current stage units which is in meters by default.
+            #         scale=np.array([10, 10, 10]), # most arguments accept mainly numpy arrays.
+            #     ))
 
-            # After adding the cube to the world, disable its rigid body physics.
-            fancy_cube.disable_rigid_body_physics()
+            # # After adding the cube to the world, disable its rigid body physics.
+            # fancy_cube.disable_rigid_body_physics()
 
     def on_set_new_global_coordinates(self):
         """

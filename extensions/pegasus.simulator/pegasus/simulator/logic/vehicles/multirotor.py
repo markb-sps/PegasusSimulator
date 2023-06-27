@@ -185,7 +185,7 @@ class Multirotor(Vehicle):
         self.apply_torque([0.0, 0.0, rolling_moment], "/body")
 
         # Compute the total linear drag force to apply to the vehicle's body frame
-        drag = self._drag.update(self._state, dt)
+        drag = self._drag.update(self._state, 0, dt)
         self.apply_force(drag, body_part="/body")
 
         # Call the update methods in all backends
