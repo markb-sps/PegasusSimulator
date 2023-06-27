@@ -217,16 +217,16 @@ class VTOL(Vehicle):
         self.apply_torque([roll_moment, pitch_moment, yaw_moment], "/body")
         # self.apply_torque([0.0, pitch_moment, 0.0], "/body")
 
-        q = self.state.attitude
+        q = self._state.attitude
         rot = R.from_quat(q)
 
 
         # Get the Euler angles (roll, pitch, yaw)
         euler_angles = rot.as_euler('xyz', degrees=True)
 
-        print("roll = ", euler_angles[0])
-        print("pitch = ", euler_angles[1])
-        print("yaw = ", euler_angles[2])
+        # print("roll = ", euler_angles[0])
+        # print("pitch = ", euler_angles[1])
+        # print("yaw = ", euler_angles[2])
         # Compute the total linear drag force to apply to the vehicle's body frame
         drag = self._drag.update(self._state, euler_angles[1]+8, dt)
         lift = self._lift.update(self._state, euler_angles[1]+8, dt)
@@ -243,23 +243,27 @@ class VTOL(Vehicle):
 
     
         plots_data = [
-            {"label": "Drag X",       "value": drag[0]},
+            # {"label": "Drag X",       "value": drag[0]},
             # {"label": "Drag Y",       "value": drag[1]},
             # {"label": "Drag Z",       "value": drag[2]},
             {"label": "Roll",       "value": euler_angles[0]},
             {"label": "Pitch",       "value": euler_angles[1]},
             {"label": "Yaw",       "value": euler_angles[2]},
-            {"label": "Lift",       "value": lift[2]},
+            {"label": "q0",       "value": self._state.attitude[0]},
+            {"label": "q1",       "value": self._state.attitude[1]},
+            {"label": "q2",       "value": self._state.attitude[2]},
+            {"label": "q3",       "value": self._state.attitude[3]},
+            # {"label": "Lift",       "value": lift[2]},
             {"label": "Airspeed",   "value": self._state.linear_body_velocity[0]},
-            {"label": "Pusher",   "value": self._thrusters.force[4]},
-            {"label": "Pusher Command",   "value": self._thrusters._input_reference[4]},
+            # {"label": "Pusher",   "value": self._thrusters.force[4]},
+            # {"label": "Pusher Command",   "value": self._thrusters._input_reference[4]},
             {"label": "Altitude",   "value": self._state.position[2]},
             # {"label": "Pitch Force",   "value": forces[7]},
-            {"label": "Pitch moment",   "value": pitch_moment},
-            {"label": "Elevator Command",   "value": self._thrusters._input_reference[7]},
+            # {"label": "Pitch moment",   "value": pitch_moment},
+            # {"label": "Elevator Command",   "value": self._thrusters._input_reference[7]},
             # {"label": "Roll Force Left",   "value": forces[5]},
-            {"label": "Roll moment",   "value": roll_moment},
-            {"label": "Aileron Left Command",   "value": self._thrusters._input_reference[5]},
+            # {"label": "Roll moment",   "value": roll_moment},
+            # {"label": "Aileron Left Command",   "value": self._thrusters._input_reference[5]},
             
             # {"label": "Roll Force Right",   "value": forces[6]},
             # {"label": "Aileron Right Command",   "value": self._thrusters._input_reference[6]},
