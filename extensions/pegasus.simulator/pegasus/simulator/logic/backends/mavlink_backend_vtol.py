@@ -710,16 +710,20 @@ class MavlinkBackendVTOL(Backend):
             self._sensor_data.new_mag_data = False
 
         if self._sensor_data.new_press_data and self._sensor_data.new_bar_data:
+            if self._sensor_data.airspeed <= 0:
+                # Handle invalid airspeed
+                self._sensor_data.diff_pressure = 0  # or any appropriate default value
+                fields_updated = fields_updated & ~SensorSource.DIFF_PRESS  # Clear the bit field
+                self._sensor_data.new_press_data = False
+            else:
+                # Convert airspeed to differential pressure
+                # self._sensor_data.diff_pressure = ((self._sensor_data.airspeed * 3 / 173) ** 2 / 1.661) * 33.864
+                air_density = 1.225
+                self._sensor_data.diff_pressure = ((self._sensor_data.airspeed) ** 2 * air_density / 2) * 0.01 # hPa 
+                # Set the bit field to signal that we are sending updated diff pressure data
+                fields_updated = fields_updated | SensorSource.DIFF_PRESS
+                self._sensor_data.new_press_data = False
 
-            # v**2 = (P_diff - P_static) * 1.661
-            # https://www.vcalc.com/wiki/vCalc/Air+Speed
-            # if self._sensor_data.airspeed <=0:
-            #     self._sensor_data.diff_pressure = 
-            self._sensor_data.diff_pressure = ((self._sensor_data.airspeed*3/173)**2/1.661)*33.864
-
-            # Set the bit field to signal that we are sending updated diff pressure data
-            fields_updated = fields_updated | SensorSource.DIFF_PRESS
-            self._sensor_data.new_press_data = False
 
         if self._sensor_data.new_bar_data:
             # Set the bit field to signal that we are sending updated barometer data
@@ -751,8 +755,9 @@ class MavlinkBackendVTOL(Backend):
                 self._sensor_data.temperature,
                 fields_updated,
             )
-        except:
-            carb.log_warn("Could not send sensor data through mavlink")
+            
+        except Exception as e:
+            carb.log_warn("Could not send sensor data through mavlink. Error: " + str(e))
 
     def send_gps_msgs(self, time_usec: int):
         """

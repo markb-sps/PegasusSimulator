@@ -77,9 +77,9 @@ class Lift(Aerodynamics):
         """
 
         # Get the velocity of the vehicle expressed in the body frame of reference
-        with open('/home/honda/Documents/wind_surface.txt', 'r') as f:
-            content = f.read()
-        self._wind_surface = float(content)
+        # with open('/home/honda/Documents/wind_surface.txt', 'r') as f:
+        #     content = f.read()
+        # self._wind_surface = float(content)
         # self._lift_coefficients = self.get_cl(pitch)
 
         body_vel = state.linear_body_velocity

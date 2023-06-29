@@ -43,8 +43,8 @@ class VTOLConfig:
         # The default thrust curve for a quadrotor and dynamics relating to drag
         self.actuations = VtolActuations()
 
-        self.drag = LinearDrag([0.05, 0.0, 0.0])
-        self.lift = Lift(1.2)
+        self.drag = LinearDrag([0.013048518355835032, 0.0, 0.0])
+        self.lift = Lift(0.21312836926485837)
         
 
         # The default sensors for a quadrotor
@@ -213,8 +213,8 @@ class VTOL(Vehicle):
         # self.handle_surface_visual(8, self._thrusters._input_reference[8], articulation)
         # Apply the torque to the body frame of the vehicle that corresponds to the rolling moment
         
-        # self.apply_torque([0.0, 0.0, yaw_moment], "/body")
-        self.apply_torque([roll_moment, pitch_moment, yaw_moment], "/body")
+        self.apply_torque([0.0, 0.0, yaw_moment], "/body")
+        # self.apply_torque([roll_moment, pitch_moment, yaw_moment], "/body")
         # self.apply_torque([0.0, pitch_moment, 0.0], "/body")
 
         q = self._state.attitude
@@ -243,20 +243,29 @@ class VTOL(Vehicle):
 
     
         plots_data = [
-            # {"label": "Drag X",       "value": drag[0]},
+            {"label": "Drag X",       "value": drag[0]},
             # {"label": "Drag Y",       "value": drag[1]},
             # {"label": "Drag Z",       "value": drag[2]},
+            
+            # {"label": "Angular Vel X",       "value": self._state.angular_velocity[0]},
+            # {"label": "Angular Vel Y",       "value": self._state.angular_velocity[1]},
+            # {"label": "Angular Vel Z",       "value": self._state.angular_velocity[2]},
             {"label": "Roll",       "value": euler_angles[0]},
             {"label": "Pitch",       "value": euler_angles[1]},
             {"label": "Yaw",       "value": euler_angles[2]},
-            {"label": "q0",       "value": self._state.attitude[0]},
-            {"label": "q1",       "value": self._state.attitude[1]},
-            {"label": "q2",       "value": self._state.attitude[2]},
-            {"label": "q3",       "value": self._state.attitude[3]},
-            # {"label": "Lift",       "value": lift[2]},
+            # {"label": "Linear Acc X",       "value": self._state.linear_acceleration[0]},
+            # {"label": "Linear Acc Y",       "value": self._state.linear_acceleration[1]},
+            # {"label": "Linear Acc Z",       "value": self._state.linear_acceleration[2]},
+            # {"label": "Vel X",       "value": self._state.linear_body_velocity[0]},
+            # {"label": "Vel Y",       "value": self._state.linear_body_velocity[1]},
+            # {"label": "Vel Z",       "value": self._state.linear_body_velocity[2]},
+            # {"label": "X",       "value": self._state.position[0]},
+            # {"label": "Y",       "value": self._state.position[1]},
+            # {"label": "Z",       "value": self._state.position[2]},
+            {"label": "Lift",       "value": lift[2]},
             {"label": "Airspeed",   "value": self._state.linear_body_velocity[0]},
-            # {"label": "Pusher",   "value": self._thrusters.force[4]},
-            # {"label": "Pusher Command",   "value": self._thrusters._input_reference[4]},
+            {"label": "Pusher",   "value": self._thrusters.force[4]},
+            {"label": "Pusher Command",   "value": self._thrusters._input_reference[4]},
             {"label": "Altitude",   "value": self._state.position[2]},
             # {"label": "Pitch Force",   "value": forces[7]},
             # {"label": "Pitch moment",   "value": pitch_moment},
@@ -271,7 +280,7 @@ class VTOL(Vehicle):
             {"label": "MC Rotor 1",   "value": self._thrusters.force[0]},
             {"label": "MC Rotor 2",   "value": self._thrusters.force[1]},
             {"label": "MC Rotor 3",   "value": self._thrusters.force[2]},
-            {"label": "MC Rotor 4",   "value": self._thrusters._input_reference[3]},
+            {"label": "MC Rotor 4",   "value": self._thrusters.force[3]},
         ]
 
         # Send each plot data to the qt plot script

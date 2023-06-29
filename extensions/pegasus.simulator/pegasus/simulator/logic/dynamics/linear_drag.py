@@ -77,9 +77,9 @@ class LinearDrag(Aerodynamics):
         # Get the velocity of the vehicle expressed in the body frame of reference
         body_vel = state.linear_body_velocity
         
-        with open('/home/honda/Documents/wind_surface.txt', 'r') as f:
-            content = f.read()
-        self._wind_surface = float(content)
+        # with open('/home/honda/Documents/wind_surface.txt', 'r') as f:
+        #     content = f.read()
+        # self._wind_surface = float(content)
         # self._reference_area = 1.012642281 # from Omega_trim = 60% = 663.94 and V_trim = 15 m/s^2
         self._reference_area = 0.176302695 # from Omega_trim = 25% = 276.64 and V_trim = 15 m/s^2
         # self._drag_coefficients[0] = self.get_cd(pitch)

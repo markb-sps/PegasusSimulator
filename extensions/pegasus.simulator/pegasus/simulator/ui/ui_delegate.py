@@ -258,6 +258,7 @@ class UIDelegate:
                 print("airframe = " + px4_airframe)
                 
                 if(self._vehicle_type == 0): #VTOL
+                    
                     mavlink_config = MavlinkBackendVTOLConfig({
                         "vehicle_id": self._vehicle_id,
                         "px4_autolaunch": px4_autostart,

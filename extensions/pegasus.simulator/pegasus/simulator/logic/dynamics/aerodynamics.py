@@ -17,7 +17,7 @@ class Aerodynamics:
         Receives as input the drag coefficients of the vehicle as a 3x1 vector of constants
         """
         # self._wind_surface = 0.280914325 * 2# from V_trim = 15 m/s^2
-        self._wind_surface = 128.016
+        self._wind_surface = 39
     @property
     def force(self):
         """The drag force to be applied on the body frame of the vehicle

@@ -44,6 +44,8 @@ class PX4LaunchTool:
         # Set the environement variables that let PX4 know which vehicle model to use internally
         self.environment = os.environ
         self.environment["PX4_SIM_MODEL"] = px4_model
+        # if(px4_model == "standard_vtol"):
+        #     self.environment["SYS_AUTOSTART"] = 1002
 
     def launch_px4(self):
         """
