@@ -169,7 +169,7 @@ class Multirotor(Vehicle):
         # Get the desired forces to apply to the vehicle
         
         forces_z, _, rolling_moment = self._thrusters.update(self._state, dt)
-        # print("force z = ", forces_z)
+        print("force z = ", forces_z)
         # print("rolling_moment = ", rolling_moment)
 
         # Apply force to each rotor
@@ -186,7 +186,8 @@ class Multirotor(Vehicle):
 
         # Compute the total linear drag force to apply to the vehicle's body frame
         drag = self._drag.update(self._state, 0, dt)
-        self.apply_force(drag, body_part="/body")
+        print(f":::: body force: {drag}")
+        # self.apply_force(drag, body_part="/body")
 
         # Call the update methods in all backends
         for backend in self._backends:
