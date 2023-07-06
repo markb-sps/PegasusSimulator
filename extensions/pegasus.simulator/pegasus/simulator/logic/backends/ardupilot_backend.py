@@ -516,8 +516,8 @@ class ArdupilotBackend(Backend):
         # Launch the PX4 in the background if needed
         if self.sitl_autolaunch and self.sitl_tool is None:
             carb.log_info("Attempting to launch PX4 in background process")
-            self.sitl_tool = PX4LaunchTool(self.sitl_dir, self._vehicle_id, self.sitl_vehicle_model)
-            self.sitl_tool.launch_px4()
+            self.sitl_tool = ArdupilotLaunchTool(self.sitl_dir, self._vehicle_id, self.sitl_vehicle_model)
+            self.sitl_tool.launch()
 
 
 
