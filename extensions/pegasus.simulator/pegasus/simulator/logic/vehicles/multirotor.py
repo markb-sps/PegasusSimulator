@@ -37,7 +37,7 @@ class MultirotorConfig:
 
         # The default thrust curve for a quadrotor and dynamics relating to drag
         self.thrust_curve = QuadraticThrustCurve()
-        self.drag = LinearDrag([0.50, 0.30, 0.0])
+        self.drag = LinearDrag([0.05, 0.05, 0.05])
 
         # The default sensors for a quadrotor
         self.sensors = [Barometer(), IMU(), Magnetometer(), GPS()]
@@ -187,7 +187,7 @@ class Multirotor(Vehicle):
         # Compute the total linear drag force to apply to the vehicle's body frame
         drag = self._drag.update(self._state, 0, dt)
         print(f":::: body force: {drag}")
-        # self.apply_force(drag, body_part="/body")
+        self.apply_force(drag, body_part="/body")
 
         # Call the update methods in all backends
         for backend in self._backends:

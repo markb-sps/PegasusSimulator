@@ -29,7 +29,6 @@ class LinearDrag(Aerodynamics):
         super().__init__()
 
         # The linear drag coefficients of the vehicle's body frame
-        # self._drag_coefficients = np.diag(drag_coefficients)
         self._drag_coefficients = (drag_coefficients)
         self._air_density = 1.293
         self._reference_area = self._wind_surface / 10
@@ -45,21 +44,6 @@ class LinearDrag(Aerodynamics):
             frame, expressed in Newton (N) [dx, dy, dz]
         """
         return self._drag_force
-    
-    def get_cd(self, alpha):
-        data = loadmat('/home/honda/mohammad/C_d.mat')  # Load .mat file
-        cd_data = data['C_d'].ravel()  # Assuming 'C_l' is a 1D array in the .mat file
-
-        alpha_points = np.concatenate([np.arange(-8.5, 14, 0.25), [14.5, 14.75, 15]])
-
-    
-        # Create an interpolation function based on the input data
-        f = interp1d(alpha_points, cd_data, kind='nearest', fill_value='extrapolate')
-
-        # Use the function to interpolate the input alpha
-        cd = f(alpha)
-
-        return cd
 
     def update(self, state: State, pitch, dt: float):
         """Method that updates the drag force to be applied on the body frame of the vehicle. The total drag force
@@ -76,21 +60,15 @@ class LinearDrag(Aerodynamics):
 
         # Get the velocity of the vehicle expressed in the body frame of reference
         body_vel = state.linear_body_velocity
-        
-        # with open('/home/honda/Documents/wind_surface.txt', 'r') as f:
-        #     content = f.read()
-        # self._wind_surface = float(content)
-        # self._reference_area = 1.012642281 # from Omega_trim = 60% = 663.94 and V_trim = 15 m/s^2
-        self._reference_area = 0.176302695 # from Omega_trim = 25% = 276.64 and V_trim = 15 m/s^2
-        # self._drag_coefficients[0] = self.get_cd(pitch)
 
-        drag = self._drag_coefficients[0] * self._air_density * self._wind_surface *(body_vel[0]**2) / 2
-        # print("self._drag_coefficients[0] = ", self._drag_coefficients[0])
-        # print("self._air_density = ", self._air_density)
-        # print(" = ", drag)
-        # print(" = ", drag)
+        self._reference_area = 0.176302695 # from Omega_trim = 25% = 276.64 and V_trim = 15 m/s^2
+
+        drag = [0.0,0.0,0.0]
+        drag[0] = self._drag_coefficients[0] * self._air_density * self._wind_surface * (body_vel[0] ** 2) / 2
+        drag[1] = self._drag_coefficients[1] * self._air_density * self._wind_surface * (body_vel[1] ** 2) / 2
+        drag[2] = self._drag_coefficients[2] * self._air_density * self._wind_surface * (body_vel[2] ** 2) / 2
+
         # Compute the component of the drag force to be applied in the body frame
-        self._drag_force = [-1*drag, 0, 0]
-        # self._drag_force[0] = -drag
-        # self._drag_force = -np.dot(self._drag_coefficients, np.multiply(np.square(body_vel), np.sign(body_vel)))
+        self._drag_force = [(-np.sign(body_vel[0]))*drag[0], (-np.sign(body_vel[1]))*drag[1], (-np.sign(body_vel[2]))*drag[2]]
+
         return self._drag_force
